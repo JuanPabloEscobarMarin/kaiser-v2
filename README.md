@@ -1,4 +1,4 @@
-# Kaiser Vibe Coding
+# Kaiser 
 
 MVP completo de reservas de barbería: cliente reserva turnos, admin gestiona servicios, empleados y citas.
 
