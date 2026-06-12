@@ -1,0 +1,9 @@
+node_modules
+dist
+/generated/prisma
+/uploads
+
+# Entornos: nunca commitear secretos. Solo el ejemplo viaja en git.
+.env
+.env.*
+!.env.example

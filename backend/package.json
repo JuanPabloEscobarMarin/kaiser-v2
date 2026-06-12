@@ -1,0 +1,48 @@
+{
+  "name": "kaiser-backend",
+  "version": "1.0.0",
+  "description": "Kaiser appointment booking backend",
+  "main": "src/server.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc --build",
+    "dev": "ts-node src/server.ts",
+    "start": "node --experimental-strip-types src/server.ts",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:reset": "prisma migrate reset",
+    "seed": "ts-node prisma/seed.ts",
+    "db:current": "bash scripts/use-db.sh current",
+    "db:local": "bash scripts/use-db.sh local",
+    "db:supabase": "bash scripts/use-db.sh supabase",
+    "db:bootstrap:local": "bash scripts/use-db.sh local && prisma migrate deploy && ts-node prisma/seed.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1005.0",
+    "@prisma/adapter-pg": "^7.4.2",
+    "@prisma/client": "^7.4.2",
+    "bcryptjs": "^3.0.2",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "express-rate-limit": "^7.4.0",
+    "helmet": "^8.0.0",
+    "jose": "^6.1.3",
+    "multer": "^2.1.1",
+    "pg": "^8.19.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^3.0.0",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/multer": "^2.1.0",
+    "@types/node": "^25.3.2",
+    "@types/pg": "^8.18.0",
+    "prisma": "^7.4.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}

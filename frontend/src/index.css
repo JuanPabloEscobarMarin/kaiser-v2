@@ -1,0 +1,520 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes:
+    light --default,
+    dark --prefersdark;
+}
+
+@utility animate-section-in {
+  animation: section-in 0.35s ease-out both;
+}
+
+@keyframes section-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Destello guiado: anillo que pulsa sobre el input donde debe continuar el usuario */
+@utility animate-guide-flash {
+  animation: guide-flash 1.4s ease-out 0.25s both;
+}
+
+@keyframes guide-flash {
+  0% {
+    box-shadow: 0 0 0 0
+      color-mix(in oklab, var(--color-primary) 60%, transparent);
+    border-color: var(--color-primary);
+  }
+  45% {
+    box-shadow: 0 0 0 10px transparent;
+    border-color: var(--color-primary);
+  }
+  60% {
+    box-shadow: 0 0 0 0
+      color-mix(in oklab, var(--color-primary) 45%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 12px transparent;
+  }
+}
+
+/* === Toast global (BaseAlert) === */
+@utility animate-toast-in {
+  animation: toast-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@utility animate-toast-out {
+  animation: toast-out 0.25s ease-in both;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+/* Barra de tiempo restante del toast (duración por inline style) */
+@utility animate-toast-progress {
+  animation: toast-progress linear both;
+}
+
+@keyframes toast-progress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+/* === Drawers laterales: cascada del contenido al abrir ===
+   El panel ya desliza con DaisyUI; esto hace que header/cuerpo lo sigan. */
+.drawer-toggle:checked ~ .drawer-side .drawer-content-cascade > * {
+  animation: drawer-item-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.drawer-toggle:checked ~ .drawer-side .drawer-content-cascade > *:nth-child(1) {
+  animation-delay: 100ms;
+}
+.drawer-toggle:checked ~ .drawer-side .drawer-content-cascade > *:nth-child(2) {
+  animation-delay: 170ms;
+}
+.drawer-toggle:checked ~ .drawer-side .drawer-content-cascade > *:nth-child(3) {
+  animation-delay: 240ms;
+}
+
+@keyframes drawer-item-in {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* === Oleada de filas/cards en listas (delay por inline style) === */
+@utility animate-row-in {
+  animation: row-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Variante sin JS: oleada por nth-child para listas/tablas existentes.
+   Las primeras 12 filas escalonan 30 ms; el resto entra junto al tope. */
+.stagger-rows > * {
+  animation: row-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 360ms;
+}
+.stagger-rows > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-rows > *:nth-child(2) { animation-delay: 30ms; }
+.stagger-rows > *:nth-child(3) { animation-delay: 60ms; }
+.stagger-rows > *:nth-child(4) { animation-delay: 90ms; }
+.stagger-rows > *:nth-child(5) { animation-delay: 120ms; }
+.stagger-rows > *:nth-child(6) { animation-delay: 150ms; }
+.stagger-rows > *:nth-child(7) { animation-delay: 180ms; }
+.stagger-rows > *:nth-child(8) { animation-delay: 210ms; }
+.stagger-rows > *:nth-child(9) { animation-delay: 240ms; }
+.stagger-rows > *:nth-child(10) { animation-delay: 270ms; }
+.stagger-rows > *:nth-child(11) { animation-delay: 300ms; }
+.stagger-rows > *:nth-child(12) { animation-delay: 330ms; }
+
+/* === Heatmap: barrido de celdas (delay diagonal por inline style) === */
+@utility animate-cell-in {
+  animation: cell-in 0.35s ease-out both;
+}
+
+@keyframes cell-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* === Barras que crecen hasta su ancho final (width por inline style) === */
+@utility animate-bar-grow {
+  animation: bar-grow 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes bar-grow {
+  from {
+    width: 0;
+  }
+}
+
+/* === Saludo: wave del emoji === */
+@utility animate-wave {
+  display: inline-block;
+  transform-origin: 70% 70%;
+  animation: wave 1.2s ease-in-out 0.3s 1;
+}
+
+@keyframes wave {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  20% {
+    transform: rotate(18deg);
+  }
+  40% {
+    transform: rotate(-10deg);
+  }
+  60% {
+    transform: rotate(14deg);
+  }
+  80% {
+    transform: rotate(-6deg);
+  }
+}
+
+/* === Pulso de anillo al seleccionar (slots de hora, etc.) === */
+@utility animate-ring-pulse {
+  animation: ring-pulse 0.5s ease-out 1;
+}
+
+@keyframes ring-pulse {
+  0% {
+    box-shadow: 0 0 0 0
+      color-mix(in oklab, var(--color-primary) 55%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 10px transparent;
+  }
+}
+
+/* === Check de éxito dibujado (confirmación de reserva) === */
+@utility animate-check-circle {
+  stroke-dasharray: 166;
+  stroke-dashoffset: 166;
+  animation: check-draw 0.6s ease-out forwards;
+}
+
+@utility animate-check-draw {
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: check-draw 0.45s ease-out 0.35s forwards;
+}
+
+@keyframes check-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* === Confeti ligero para el momento de éxito === */
+.confetti-burst {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.confetti-burst span {
+  position: absolute;
+  top: 50%;
+  left: 2rem;
+  width: 6px;
+  height: 10px;
+  border-radius: 1px;
+  opacity: 0;
+  background: var(--color-primary);
+  animation: confetti 0.9s ease-out forwards;
+}
+.confetti-burst span:nth-child(2n) {
+  background: var(--color-secondary);
+  width: 5px;
+  height: 8px;
+}
+.confetti-burst span:nth-child(3n) {
+  background: var(--color-accent);
+}
+.confetti-burst span:nth-child(1) { --dx: -60px; --dy: -70px; --rot: 200deg; }
+.confetti-burst span:nth-child(2) { --dx: 50px; --dy: -90px; --rot: -160deg; animation-delay: 60ms; }
+.confetti-burst span:nth-child(3) { --dx: 110px; --dy: -50px; --rot: 240deg; animation-delay: 30ms; }
+.confetti-burst span:nth-child(4) { --dx: -110px; --dy: -30px; --rot: -200deg; }
+.confetti-burst span:nth-child(5) { --dx: 30px; --dy: -110px; --rot: 160deg; animation-delay: 90ms; }
+.confetti-burst span:nth-child(6) { --dx: -40px; --dy: -100px; --rot: -240deg; animation-delay: 45ms; }
+.confetti-burst span:nth-child(7) { --dx: 90px; --dy: -80px; --rot: 300deg; animation-delay: 75ms; }
+.confetti-burst span:nth-child(8) { --dx: -85px; --dy: -85px; --rot: -300deg; animation-delay: 15ms; }
+.confetti-burst span:nth-child(9) { --dx: 140px; --dy: -20px; --rot: 180deg; animation-delay: 105ms; }
+.confetti-burst span:nth-child(10) { --dx: -140px; --dy: -15px; --rot: -180deg; animation-delay: 50ms; }
+
+@keyframes confetti {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy)) rotate(var(--rot));
+  }
+}
+
+/* === Subrayado animado para links de navegación === */
+.nav-underline {
+  position: relative;
+}
+.nav-underline::after {
+  content: "";
+  position: absolute;
+  left: 0.75rem;
+  bottom: 0.3rem;
+  height: 2px;
+  width: 0;
+  border-radius: 1px;
+  background: var(--color-primary);
+  transition: width 0.25s ease;
+}
+.nav-underline:hover::after,
+.nav-underline-active::after {
+  width: calc(100% - 1.5rem);
+}
+
+/* === Pop del check en steps completados === */
+.step-pop::after {
+  animation: pop-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Resaltado de la card centrada en viewport (optimización móvil).
+   Ligero: solo transform + sombra/borde, sin keyframes pesados. */
+.spotlight-target > * {
+  transition:
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.35s ease,
+    border-color 0.35s ease;
+}
+
+.spotlight-target[data-spotlight="on"] > * {
+  transform: scale(1.035);
+  box-shadow: 0 20px 45px -14px
+    color-mix(in oklab, var(--color-primary) 50%, transparent);
+  border-color: color-mix(in oklab, var(--color-primary) 45%, transparent);
+}
+
+/* Calendario compacto para pantallas desde 320px */
+@media (max-width: 380px) {
+  .react-day-picker {
+    --rdp-day-width: 2.1rem;
+    --rdp-day-height: 2.1rem;
+    --rdp-day_button-width: 2.1rem;
+    --rdp-day_button-height: 2.1rem;
+    font-size: 0.85rem;
+  }
+}
+
+/* Animaciones del login */
+@utility animate-blob {
+  animation: blob-drift 18s ease-in-out infinite alternate;
+}
+
+@utility animate-blob-delayed {
+  animation: blob-drift 18s ease-in-out -9s infinite alternate-reverse;
+}
+
+@keyframes blob-drift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(40px, -30px, 0) scale(1.15);
+  }
+  100% {
+    transform: translate3d(-30px, 20px, 0) scale(0.95);
+  }
+}
+
+@utility animate-card-in {
+  animation: card-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@utility animate-logo-float {
+  animation: logo-float 4s ease-in-out infinite;
+}
+
+@keyframes logo-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@utility animate-pop-in {
+  animation: pop-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@utility animate-circle-expand {
+  animation: circle-expand 0.7s ease-in 0.15s both;
+}
+
+@keyframes circle-expand {
+  from {
+    transform: scale(0);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+/* Fondo "agenda dinámica" del login */
+@utility animate-clock-spin {
+  animation: clock-spin 60s linear infinite;
+}
+
+@keyframes clock-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@utility animate-slot-float {
+  animation: slot-float 7s ease-in-out infinite;
+}
+
+@keyframes slot-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@utility animate-slot-blink {
+  animation: slot-blink 3.5s ease-in-out infinite;
+}
+
+@keyframes slot-blink {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@utility animate-cal-pulse {
+  animation: cal-pulse 5s ease-in-out infinite;
+}
+
+@keyframes cal-pulse {
+  0%,
+  100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* Time-lapse de manecillas al iniciar sesión */
+@utility animate-timelapse {
+  animation: timelapse-spin 0.9s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes timelapse-spin {
+  to {
+    transform: rotate(1080deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-section-in,
+  .animate-guide-flash,
+  .animate-blob,
+  .animate-blob-delayed,
+  .animate-card-in,
+  .animate-logo-float,
+  .animate-pop-in,
+  .animate-clock-spin,
+  .animate-slot-float,
+  .animate-slot-blink,
+  .animate-cal-pulse,
+  .animate-timelapse,
+  .animate-toast-in,
+  .animate-toast-out,
+  .animate-row-in,
+  .animate-cell-in,
+  .animate-bar-grow,
+  .animate-wave,
+  .animate-ring-pulse,
+  .drawer-toggle:checked ~ .drawer-side .drawer-content-cascade > *,
+  .step-pop::after,
+  .stagger-rows > *,
+  .confetti-burst span {
+    animation: none;
+  }
+  .animate-check-circle,
+  .animate-check-draw {
+    animation-duration: 0.01s;
+    animation-delay: 0s;
+  }
+  .nav-underline::after {
+    transition: none;
+  }
+  .animate-circle-expand {
+    animation-duration: 0.01s;
+    animation-delay: 0s;
+  }
+  .spotlight-target[data-spotlight="on"] > * {
+    transform: none;
+  }
+}
