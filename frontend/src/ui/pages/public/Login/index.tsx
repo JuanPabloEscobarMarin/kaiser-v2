@@ -8,7 +8,7 @@ import {
 import { AparienceSwitcher } from "@/ui/layouts/components/AparienceSwitcher";
 import { BaseIcon } from "@/ui/components/base/BaseIcon";
 import { useAuth } from "@/ui/hooks/useAuth";
-import { useBranding } from "@/ui/contexts/branding/BrandingProvider";
+import { useBranding } from "@/ui/contexts/branding/context";
 import { ApiError, resourcesApi } from "@/core/api";
 
 export function LoginPage() {

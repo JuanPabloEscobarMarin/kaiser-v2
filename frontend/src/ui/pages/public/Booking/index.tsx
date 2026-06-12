@@ -42,8 +42,9 @@ export function BookingPage() {
   useEffect(() => {
     const q = debouncedQuery.trim();
     if (q.length < 2) {
-      setSearchResults(null);
-      return;
+      // Diferido: evita un setState síncrono dentro del efecto.
+      const t = setTimeout(() => setSearchResults(null), 0);
+      return () => clearTimeout(t);
     }
     servicesApi
       .search(q)

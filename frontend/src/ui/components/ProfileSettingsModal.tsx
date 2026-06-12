@@ -1,20 +1,12 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { ApiError, resourcesApi } from "@/core/api";
 import { useAuth } from "@/ui/hooks/useAuth";
+import { initials } from "@/lib/format";
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
 }
-
-const initials = (fullName: string) =>
-  fullName
-    .split(/\s+/)
-    .map((p) => p[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
 
 type Tab = "profile" | "password";
 

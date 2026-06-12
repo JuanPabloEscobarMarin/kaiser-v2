@@ -25,6 +25,13 @@ const at = (offsetDays: number, hour: number, minutes = 0) => {
 };
 
 async function main() {
+  // El seed BORRA toda la base. Jamás debe correr contra producción por
+  // accidente; exige confirmación explícita vía SEED_FORCE=1.
+  if (process.env.NODE_ENV === "production" && process.env.SEED_FORCE !== "1") {
+    console.error("❌ NODE_ENV=production: seed bloqueado. Usa SEED_FORCE=1 si de verdad quieres borrar y resembrar la base.");
+    process.exit(1);
+  }
+
   console.log("🌱 Seeding database...");
 
   console.log("  → Limpiando datos existentes");
@@ -36,7 +43,12 @@ async function main() {
   await prisma.user.deleteMany();
 
   console.log("  → Creando usuarios admin");
-  const adminHash = await bcrypt.hash("admin123", 10);
+  // Credencial configurable: nunca dejar admin123 en una base real.
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "admin123";
+  if (!process.env.SEED_ADMIN_PASSWORD) {
+    console.warn("  ⚠️  Usando contraseña de admin por defecto (solo dev). Define SEED_ADMIN_PASSWORD para entornos reales.");
+  }
+  const adminHash = await bcrypt.hash(adminPassword, 10);
   await prisma.user.create({
     data: {
       username: "admin",

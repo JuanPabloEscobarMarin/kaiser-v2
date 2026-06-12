@@ -28,12 +28,7 @@ const priceOf = (a: Appointment) => {
   return Math.max(0, price - discount);
 };
 
-export const formatPrice = (value: number) =>
-  new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    maximumFractionDigits: 0,
-  }).format(value);
+export { formatPrice } from "@/lib/format";
 
 export const formatPercent = (n: number, digits = 1) =>
   `${(n * 100).toFixed(digits)}%`;

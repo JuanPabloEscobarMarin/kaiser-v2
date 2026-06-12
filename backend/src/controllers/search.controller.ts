@@ -4,7 +4,9 @@ import { BadRequestException } from "../exceptions/HttpException.ts";
 
 export const SearchController = {
   async search(req: Request, res: Response) {
-    const raw = (req.query.q as string | undefined) ?? "";
+    // ?q[]=a&q[]=b produce un array; sin este check, .replace lanza y da 500.
+    const rawParam = req.query.q;
+    const raw = typeof rawParam === "string" ? rawParam : "";
     const q = raw.replace(/\+/g, " ").trim();
 
     if (q.length < 2) {

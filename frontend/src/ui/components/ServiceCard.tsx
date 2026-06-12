@@ -2,13 +2,7 @@ import { useNavigate } from "react-router";
 import type { Service } from "@/core/types";
 import { resourcesApi } from "@/core/api";
 import placeholder from "@/assets/placeholder-image.webp";
-
-const formatPrice = (value: string) =>
-  new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    maximumFractionDigits: 0,
-  }).format(Number(value));
+import { formatPrice } from "@/lib/format";
 
 interface Props {
   service: Service;

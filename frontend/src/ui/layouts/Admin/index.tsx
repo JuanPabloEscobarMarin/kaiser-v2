@@ -4,7 +4,7 @@ import { AvatarMenu } from "../components/avatarMenu";
 import { BaseAlert } from "@/ui/components/base/BaseAlert";
 import { useNotify } from "@/ui/hooks/useNotify";
 import { useAuth } from "@/ui/hooks/useAuth";
-import { useBranding } from "@/ui/contexts/branding/BrandingProvider";
+import { useBranding } from "@/ui/contexts/branding/context";
 import { BaseIcon } from "@/ui/components/base/BaseIcon";
 import { resourcesApi } from "@/core/api";
 

@@ -9,6 +9,10 @@ import { env } from "./config/env.ts";
 
 export const app = express();
 
+// Detrás de un reverse proxy, sin esto express-rate-limit vería la IP del
+// proxy para todos los clientes (o ninguna real). Configurable por entorno.
+if (env.TRUST_PROXY > 0) app.set("trust proxy", env.TRUST_PROXY);
+
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 app.use(
   cors({
@@ -18,6 +22,20 @@ app.use(
 );
 app.use(express.json({ limit: "1mb" }));
 app.use(cookieParser());
+
+// Defensa CSRF explícita: para métodos que mutan estado, si el navegador
+// envía un header Origin debe estar en la allowlist de CORS. Las requests
+// sin Origin (curl, server-to-server) pasan — la cookie sameSite=lax ya
+// impide que un navegador las genere cross-site.
+const allowedOrigins = new Set(env.CORS_ORIGIN.split(",").map((s) => s.trim()));
+app.use((req, res, next) => {
+  const mutating = !["GET", "HEAD", "OPTIONS"].includes(req.method);
+  const origin = req.headers.origin;
+  if (mutating && origin && !allowedOrigins.has(origin)) {
+    return res.status(403).json({ error: "Origin not allowed" });
+  }
+  next();
+});
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -34,7 +52,6 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 app.use("/api/auth/login", authLimiter);
-app.use("/api/auth/register", authLimiter);
 
 // The public booking endpoint creates appointments + customer records with no
 // authentication, so it's a spam/abuse vector. Cap it well below the global

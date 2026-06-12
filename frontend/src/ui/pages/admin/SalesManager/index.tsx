@@ -8,9 +8,9 @@ import { SaleDesktopTable } from "./components/SaleDesktopTable";
 import { SaleMobileList } from "./components/SaleMobileList";
 import { CreateSaleDrawer } from "./components/CreateSaleDrawer";
 import { SaleDetailDrawer } from "./components/SaleDetailDrawer";
-import { SaleFabButton } from "./components/SaleFabButton";
 import { formatCurrency } from "./utils";
 import { ListSkeleton } from "@/ui/components/Skeletons";
+import { FabActions } from "@/ui/components/FabActions";
 
 export function SalesManager() {
   const [sales, setSales] = useState<Sale[]>([]);
@@ -23,7 +23,6 @@ export function SalesManager() {
   const notify = useNotify();
 
   const load = () => {
-    setLoading(true);
     Promise.all([salesApi.list(), productsApi.list(), employeesApi.list()])
       .then(([s, p, e]) => {
         setSales(s);
@@ -109,7 +108,7 @@ export function SalesManager() {
         sale={detailSale}
       />
 
-      <SaleFabButton
+      <FabActions
         onAdd={() => setIsCreateOpen(true)}
         onDelete={() => handleDeletes(selectedIds)}
         disabledDelete={selectedIds.length === 0}

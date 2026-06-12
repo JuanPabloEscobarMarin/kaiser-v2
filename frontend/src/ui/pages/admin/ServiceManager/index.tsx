@@ -4,9 +4,9 @@ import type { Service } from "@/core/types";
 import { ServiceMobileList } from "./components/ServiceMobileList";
 import { ServiceDesktopTable } from "./components/ServiceDesktopTable";
 import { CreateServiceDrawer } from "./components/CreateServiceDrawer";
-import { ServiceFabButton } from "./components/ServiceFabButton";
 import { useNotify } from "@/ui/hooks/useNotify";
 import { ListSkeleton } from "@/ui/components/Skeletons";
+import { FabActions } from "@/ui/components/FabActions";
 
 export function ServiceManager() {
   const [services, setServices] = useState<Service[]>([]);
@@ -18,7 +18,6 @@ export function ServiceManager() {
   const notify = useNotify();
 
   const load = () => {
-    setLoading(true);
     servicesApi
       .list()
       .then(setServices)
@@ -101,7 +100,7 @@ export function ServiceManager() {
         readOnly={isViewMode}
       />
 
-      <ServiceFabButton
+      <FabActions
         onAdd={() => {
           setSelectedService(null);
           setIsViewMode(false);

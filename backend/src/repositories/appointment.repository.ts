@@ -1,4 +1,5 @@
 import { prisma } from "../lib/prisma.ts";
+import { ConflictException } from "../exceptions/HttpException.ts";
 import type { Prisma } from "../../generated/prisma/client.ts";
 import type { AppointmentState } from "../../generated/prisma/enums.ts";
 
@@ -60,7 +61,10 @@ export const AppointmentRepository = {
       where: {
         employeeId,
         state: { not: "CANCELLED" },
-        scheduledAt: { gte: dayStart, lt: dayEnd },
+        // Solapamiento real con el día, no solo citas que EMPIEZAN en él:
+        // una cita de ayer 23:30→00:30 también bloquea la mañana de hoy.
+        scheduledAt: { lt: dayEnd },
+        endsAt: { gt: dayStart },
       },
       select: { scheduledAt: true, endsAt: true },
       orderBy: { scheduledAt: "asc" },
@@ -88,17 +92,61 @@ export const AppointmentRepository = {
       orderBy: { scheduledAt: "asc" },
     }),
 
-  createWithBooking: (data: CreateAppointmentData & { customerId: string }) =>
-    prisma.appointment.create({
-      data: {
-        serviceId: data.serviceId,
-        employeeId: data.employeeId,
-        scheduledAt: data.scheduledAt,
-        endsAt: data.endsAt,
-        booking: { create: { customerId: data.customerId } },
-      },
-      include: fullInclude,
-    }),
+  /**
+   * Crea la cita re-validando el solape DENTRO de una transacción serializable.
+   * Cierra la ventana TOCTOU: dos requests simultáneas al mismo slot no pueden
+   * pasar ambas el chequeo (la segunda falla por aislamiento y se reintenta el
+   * error como conflicto).
+   */
+  createWithBooking: async (
+    data: CreateAppointmentData & { customerId: string },
+  ) => {
+    try {
+      return await prisma.$transaction(
+        async (tx) => {
+          const overlap = await tx.appointment.findFirst({
+            where: {
+              employeeId: data.employeeId,
+              state: { not: "CANCELLED" },
+              AND: [
+                { scheduledAt: { lt: data.endsAt } },
+                { endsAt: { gt: data.scheduledAt } },
+              ],
+            },
+            select: { id: true },
+          });
+          if (overlap) {
+            throw new ConflictException(
+              "Employee already has an appointment in this time range",
+            );
+          }
+          return tx.appointment.create({
+            data: {
+              serviceId: data.serviceId,
+              employeeId: data.employeeId,
+              scheduledAt: data.scheduledAt,
+              endsAt: data.endsAt,
+              booking: { create: { customerId: data.customerId } },
+            },
+            include: fullInclude,
+          });
+        },
+        { isolationLevel: "Serializable" },
+      );
+    } catch (err) {
+      // P2034: fallo de serialización por escritura concurrente → conflicto.
+      if (
+        err instanceof Error &&
+        "code" in err &&
+        (err as { code?: string }).code === "P2034"
+      ) {
+        throw new ConflictException(
+          "Employee already has an appointment in this time range",
+        );
+      }
+      throw err;
+    }
+  },
 
   update: (id: string, data: UpdateAppointmentData) =>
     prisma.appointment.update({

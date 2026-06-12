@@ -72,12 +72,7 @@ export const filterByRange = (
   range: DateRange,
 ) => appointments.filter((a) => inRange(a.scheduledAt, range));
 
-export const formatPrice = (value: number) =>
-  new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    maximumFractionDigits: 0,
-  }).format(value);
+export { formatPrice } from "@/lib/format";
 
 export const formatDuration = (minutes: number) => {
   if (minutes <= 0) return "0m";

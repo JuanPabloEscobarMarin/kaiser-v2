@@ -1,7 +1,8 @@
 import { BaseIcon } from "@/ui/components/base/BaseIcon";
 
-interface ServiceFabButtonProps {
+interface Props {
   onAdd?: () => void;
+  /** Omitir para entidades sin edición (p. ej. ventas, que son inmutables). */
   onEdit?: () => void;
   onDelete?: () => void;
   disabledEdit?: boolean;
@@ -9,14 +10,18 @@ interface ServiceFabButtonProps {
   hidden?: boolean;
 }
 
-export function ServiceFabButton({
+/**
+ * FAB de acciones CRUD compartido por todos los managers de la admin.
+ * Reemplaza a los seis *FabButton idénticos que existían por entidad.
+ */
+export function FabActions({
   onAdd,
   onEdit,
   onDelete,
   disabledEdit = false,
   disabledDelete = false,
   hidden = false,
-}: ServiceFabButtonProps) {
+}: Props) {
   if (hidden) return null;
   return (
     <div className="fab fab-flower">
@@ -41,19 +46,18 @@ export function ServiceFabButton({
       </button>
 
       {/* buttons that show up when FAB is open */}
-      <button 
-        className="btn btn-circle btn-lg btn-success"
-        onClick={onAdd}
-      >
+      <button className="btn btn-circle btn-lg btn-success" onClick={onAdd}>
         <BaseIcon icon="plus" size={24} color="currentColor" />
       </button>
-      <button
-        className="btn btn-circle btn-lg btn-warning"
-        onClick={onEdit}
-        disabled={disabledEdit}
-      >
-        <BaseIcon icon="edit" size={24} color="currentColor" />
-      </button>
+      {onEdit && (
+        <button
+          className="btn btn-circle btn-lg btn-warning"
+          onClick={onEdit}
+          disabled={disabledEdit}
+        >
+          <BaseIcon icon="edit" size={24} color="currentColor" />
+        </button>
+      )}
       <button
         className="btn btn-circle btn-lg btn-error"
         onClick={onDelete}

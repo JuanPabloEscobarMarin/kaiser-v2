@@ -227,7 +227,13 @@ export function EmployeeTimeOff() {
         <div className="card-body">
           <h2 className="font-bold text-lg">Bloqueos activos</h2>
           {loading ? (
-            <span className="loading loading-spinner" />
+            <ul className="space-y-2" aria-hidden="true">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <li key={i} className="py-2">
+                  <div className="h-4 w-2/3 bg-base-300 rounded animate-pulse" />
+                </li>
+              ))}
+            </ul>
           ) : blocks.length === 0 ? (
             <p className="text-sm opacity-60">No tienes bloqueos registrados.</p>
           ) : (

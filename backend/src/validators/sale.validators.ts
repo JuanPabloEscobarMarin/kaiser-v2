@@ -1,9 +1,7 @@
 import { z } from "zod";
+import { isoDate } from "./common.ts";
 import { customerSchema } from "./customer.validators.ts";
 
-const isoDate = z
-  .string()
-  .refine((v) => !Number.isNaN(Date.parse(v)), "Invalid ISO datetime");
 
 export const createSaleSchema = z.object({
   items: z

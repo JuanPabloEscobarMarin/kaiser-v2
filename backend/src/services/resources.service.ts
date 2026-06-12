@@ -43,34 +43,50 @@ interface StoredImage {
 }
 
 interface StorageDriver {
-  store(file: Express.Multer.File): Promise<{ slug: string }>;
+  store(file: Express.Multer.File, detectedMime: string): Promise<{ slug: string }>;
   get(slug: string): Promise<StoredImage>;
 }
 
-const buildKey = (file: Express.Multer.File) => {
-  const ext =
-    path.extname(file.originalname) || EXT_BY_MIME[file.mimetype] || ".bin";
-  return `${randomUUID()}${ext}`;
+/**
+ * Detecta el tipo real por magic bytes. El mimetype del multipart lo declara
+ * el cliente y no es confiable; aquí validamos el contenido en sí.
+ */
+const sniffImageType = (buf: Buffer): string | null => {
+  if (buf.length < 12) return null;
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "image/jpeg";
+  if (buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])))
+    return "image/png";
+  if (buf.subarray(0, 4).toString("ascii") === "RIFF" && buf.subarray(8, 12).toString("ascii") === "WEBP")
+    return "image/webp";
+  const gif = buf.subarray(0, 6).toString("ascii");
+  if (gif === "GIF87a" || gif === "GIF89a") return "image/gif";
+  return null;
 };
+
+// La extensión sale SIEMPRE del tipo detectado, nunca del nombre original
+// (controlado por el cliente). Así no se almacenan .html/.svg disfrazados.
+const buildKey = (detectedMime: string) =>
+  `${randomUUID()}${EXT_BY_MIME[detectedMime] ?? ".bin"}`;
 
 /** Production driver: a Supabase/S3 bucket reached via the AWS SDK. */
 const s3Driver: StorageDriver = {
-  async store(file) {
-    const key = buildKey(file);
+  async store(file, detectedMime) {
+    const key = buildKey(detectedMime);
     await s3Client.send(
       new PutObjectCommand({
         Bucket: BUCKET,
         Key: `images/${key}`,
         Body: file.buffer,
-        ContentType: file.mimetype,
+        ContentType: detectedMime,
       }),
     );
     return { slug: key };
   },
 
   async get(slug) {
+    // basename: el slug viene de la URL; nunca debe poder salirse del prefijo.
     const response = await s3Client.send(
-      new GetObjectCommand({ Bucket: BUCKET, Key: `images/${slug}` }),
+      new GetObjectCommand({ Bucket: BUCKET, Key: `images/${path.basename(slug)}` }),
     );
     return {
       stream: response.Body as Readable,
@@ -86,8 +102,8 @@ const s3Driver: StorageDriver = {
 const localImagesDir = path.resolve(env.LOCAL_STORAGE_DIR, "images");
 
 const localDriver: StorageDriver = {
-  async store(file) {
-    const key = buildKey(file);
+  async store(file, detectedMime) {
+    const key = buildKey(detectedMime);
     await mkdir(localImagesDir, { recursive: true });
     await writeFile(path.join(localImagesDir, key), file.buffer);
     return { slug: key };
@@ -118,9 +134,12 @@ export const ResourcesService = {
 
   async storeImage(file: Express.Multer.File | undefined) {
     if (!file) throw new BadRequestException("File is required");
-    if (!ALLOWED_MIME.has(file.mimetype)) {
-      throw new BadRequestException(`Unsupported mime type: ${file.mimetype}`);
+    const detected = sniffImageType(file.buffer);
+    if (!detected || !ALLOWED_MIME.has(detected)) {
+      throw new BadRequestException(
+        "El archivo no es una imagen válida (se admite JPEG, PNG, WebP o GIF)",
+      );
     }
-    return driver.store(file);
+    return driver.store(file, detected);
   },
 };

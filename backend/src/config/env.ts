@@ -9,6 +9,10 @@ const schema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 chars"),
   CORS_ORIGIN: z.string().default("http://localhost:5173"),
+  // Saltos de proxy confiables delante de la app (p. ej. "1" detrás de un
+  // reverse proxy). Vacío = sin proxy. Necesario para que el rate limit vea
+  // la IP real del cliente y no la del proxy.
+  TRUST_PROXY: z.coerce.number().int().min(0).default(0),
   AWS_S3_REGION: z.string().default(""),
   AWS_S3_ACCESS_KEY_ID: z.string().default(""),
   AWS_S3_SECRET_ACCESS_KEY: z.string().default(""),

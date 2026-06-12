@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { ServiceController } from "../controllers/service.controller.ts";
 import { asyncHandler } from "../middlewares/async-handler.ts";
-import { requireAdmin } from "../middlewares/auth.middleware.ts";
+import { optionalAuth, requireAdmin } from "../middlewares/auth.middleware.ts";
 import {
   idParamSchema,
   validate,
@@ -14,7 +14,7 @@ import {
 
 const router = Router();
 
-router.get("/", asyncHandler(ServiceController.list));
+router.get("/", asyncHandler(optionalAuth), asyncHandler(ServiceController.list));
 router.get(
   "/:id",
   validate(idParamSchema, "params"),

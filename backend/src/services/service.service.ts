@@ -6,7 +6,7 @@ import type {
 } from "../validators/service.validators.ts";
 
 export const ServiceService = {
-  list: () => ServiceRepository.all(),
+  list: (includeInactive = false) => ServiceRepository.all(includeInactive),
 
   async getById(id: string) {
     const service = await ServiceRepository.byId(id);

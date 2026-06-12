@@ -3,7 +3,7 @@ import { AuthController } from "../controllers/auth.controller.ts";
 import { asyncHandler } from "../middlewares/async-handler.ts";
 import { requireAuth } from "../middlewares/auth.middleware.ts";
 import { validate } from "../middlewares/validate.middleware.ts";
-import { loginSchema, registerSchema } from "../validators/auth.validators.ts";
+import { loginSchema } from "../validators/auth.validators.ts";
 import {
   changePasswordSchema,
   updateProfileSchema,
@@ -11,11 +11,6 @@ import {
 
 const router = Router();
 
-router.post(
-  "/register",
-  validate(registerSchema),
-  asyncHandler(AuthController.register),
-);
 router.post(
   "/login",
   validate(loginSchema),

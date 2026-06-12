@@ -6,9 +6,7 @@ import type { Appointment } from "@/core/types";
 import { CountUp } from "@/ui/components/CountUp";
 import { Reveal } from "@/ui/components/Reveal";
 import { StatsSkeleton } from "@/ui/components/Skeletons";
-
-const formatCurrency = (v: number) =>
-  new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(v);
+import { formatCurrency } from "@/lib/format";
 
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString("es-CO", {

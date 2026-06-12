@@ -1,9 +1,4 @@
-export const formatCurrency = (v: string | number) =>
-  new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    maximumFractionDigits: 0,
-  }).format(typeof v === "string" ? Number(v) : v);
+export { formatCurrency } from "@/lib/format";
 
 export const formatDateTime = (iso: string) =>
   new Date(iso).toLocaleDateString("es-CO", {

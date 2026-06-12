@@ -6,9 +6,9 @@ import { EmployeeMobileList } from "./components/EmployeeMobileList";
 import { CreateEmployeeDrawer } from "./components/CreateEmployeeDrawer";
 import { ScheduleBlocksDrawer } from "./components/ScheduleBlocksDrawer";
 import { CreateAccountModal } from "./components/CreateAccountModal";
-import { EmployeeFabButton } from "./components/EmployeeFabButton";
 import { useNotify } from "@/ui/hooks/useNotify";
 import { ListSkeleton } from "@/ui/components/Skeletons";
+import { FabActions } from "@/ui/components/FabActions";
 
 export function EmployeeManager() {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -24,7 +24,6 @@ export function EmployeeManager() {
   const notify = useNotify();
 
   const load = () => {
-    setLoading(true);
     employeesApi
       .list()
       .then(setEmployees)
@@ -109,7 +108,7 @@ export function EmployeeManager() {
         readOnly={isViewMode}
       />
 
-      <EmployeeFabButton
+      <FabActions
         onAdd={() => {
           setSelectedEmployee(null);
           setIsViewMode(false);

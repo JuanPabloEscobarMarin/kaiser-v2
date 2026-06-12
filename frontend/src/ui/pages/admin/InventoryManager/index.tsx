@@ -5,8 +5,8 @@ import { useNotify } from "@/ui/hooks/useNotify";
 import { InventoryDesktopTable } from "./components/InventoryDesktopTable";
 import { InventoryMobileList } from "./components/InventoryMobileList";
 import { CreateItemDrawer } from "./components/CreateItemDrawer";
-import { InventoryFabButton } from "./components/InventoryFabButton";
 import { ListSkeleton } from "@/ui/components/Skeletons";
+import { FabActions } from "@/ui/components/FabActions";
 
 export function InventoryManager() {
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -20,7 +20,6 @@ export function InventoryManager() {
   const notify = useNotify();
 
   const load = () => {
-    setLoading(true);
     Promise.all([inventoryApi.listItems(), inventoryApi.listCategories()])
       .then(([items, cats]) => {
         setItems(items);
@@ -186,7 +185,7 @@ export function InventoryManager() {
         readOnly={isViewMode}
       />
 
-      <InventoryFabButton
+      <FabActions
         onAdd={handleAdd}
         onEdit={handleEditSelected}
         onDelete={() => handleDeletes(selectedIds)}

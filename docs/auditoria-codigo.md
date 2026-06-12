@@ -1,104 +1,95 @@
 # Auditoría de código — Kaiser (frontend + backend)
 
 Revisión completa en busca de problemas de seguridad, lógica, código muerto y
-mala estructura. **Solo listado — nada está corregido.** Fecha: 2026-06-12.
+mala estructura. Auditoría: 2026-06-12. **Resolución: 2026-06-12 — 39 de 40
+ítems resueltos** (el #3 se omitió por decisión explícita del negocio).
 
 ---
 
 ## 🔴 Seguridad — alta prioridad
 
-1. **Registro público abierto sin UI que lo use** — `backend/src/routes/auth.routes.ts` expone `POST /api/auth/register` sin autenticación (limitado a 30 req/15min). Cualquiera crea cuentas `CLIENT`. Encadenado con que `POST /api/resources/images` solo pide `requireAuth`, un anónimo puede: registrarse → loguearse → subir imágenes de hasta 5 MB al bucket (abuso de almacenamiento). El frontend ni siquiera tiene página de registro.
+1. ✅ **RESUELTO — Registro público abierto.** Eliminado `POST /api/auth/register` completo (ruta, servicio, validator) y su contraparte muerta en el frontend (`authApi.register`, `AuthContext.register`). Las cuentas solo las crea el admin vía `/employees/:id/...`. Cierra también el vector de abuso de storage por anónimos.
 
-2. **El error middleware filtra mensajes internos en producción** — `backend/src/middlewares/error.middleware.ts`: para errores que no son `HttpException` responde `error.message` tal cual (mensajes de Prisma/PG/SDK con detalles de esquema o conexión). En producción debería ser un mensaje genérico.
+2. ✅ **RESUELTO — Error middleware filtraba mensajes internos.** En producción ahora responde `"Internal server error"` genérico; los mensajes reales solo salen en desarrollo (`error.middleware.ts`).
 
-3. **Upsert de clientes sin verificación desde endpoint público** — `POST /api/appointments/book` → `CustomerRepository.upsert`: quien conozca (o adivine) una cédula **sobrescribe** el `fullName`/`phone` del cliente existente y vincula reservas a su historial. Manipulación/enumeración de PII por cédula, sin autenticación.
+3. ⏭️ **OMITIDO a pedido** — Upsert de clientes sin verificación desde `/appointments/book`. Se conserva el comportamiento actual ("si ya reservaste con esta cédula, vinculamos tu historial") por decisión de producto.
 
-4. **Upload valida solo el mimetype declarado por el cliente** — `backend/src/services/resources.service.ts`: no hay validación por magic bytes; la extensión sale del `originalname` del atacante (con fallback `.bin`); en S3 el `ContentType` guardado es el declarado. Permite almacenar contenido no-imagen (HTML/SVG) bajo extensión arbitraria. Falta allowlist de extensiones y sniffing de contenido.
+4. ✅ **RESUELTO — Upload confiaba en el mimetype declarado.** `resources.service.ts` ahora valida por **magic bytes** (JPEG/PNG/WebP/GIF) y la extensión se deriva SIEMPRE del tipo detectado, nunca del nombre original del cliente. El `ContentType` guardado en S3 es el detectado.
 
-5. **Dependencias con CVEs conocidos** —
-   - Frontend: 7 vulnerabilidades (2 moderate, 5 high). `xlsx@0.18.5`: prototype pollution (GHSA-4r6h-8v6p-xvw6) y ReDoS (GHSA-5pgg-2g8v-p4x9) — **sin fix en npm** (SheetJS se mudó de registry).
-   - Backend: 17 vulnerabilidades (6 moderate, 11 high), incl. `path-to-regexp` ReDoS y `qs` DoS — la mayoría se arregla con `npm audit fix`.
+5. ✅ **RESUELTO — Dependencias con CVEs.** Frontend: **0 vulnerabilidades** (xlsx actualizado a 0.20.3 desde el registry oficial de SheetJS — corrige prototype pollution y ReDoS — y `npm audit fix`). Backend: de 17 a **3 moderate residuales**, todas en la cadena dev-only del CLI de Prisma (`@prisma/dev → @hono/node-server`); el "fix" forzaría un downgrade breaking a Prisma 6, no afecta runtime. Residual aceptado y documentado.
 
-6. **Secretos reales fuera de control de versiones y sin respaldo** — `backend/.env`, `.env.local`, `.env.supabase` contienen `JWT_SECRET`, `DATABASE_URL` y credenciales de Supabase. Como el backend no es un repo git real (ver Estructura #1), no hay trazabilidad; al arreglar el git hay riesgo de commitearlos por accidente. Además conviven `.env-example` Y `.env.example` (duplicados).
+6. ✅ **RESUELTO — Secretos y archivos de entorno.** `backend/.gitignore` endurecido a `.env` + `.env.*` + `!.env.example` (el patrón viejo `*.env` NO cubría `.env.local` ni `.env.supabase`); duplicado `.env-example` eliminado. Verificado: ningún archivo con secretos quedó trackeado en el commit de rescate.
 
-7. **Seed con credenciales por defecto y borrado total sin guard** — `backend/prisma/seed.ts`: crea `admin`/`admin123` hardcodeado y ejecuta `deleteMany()` sobre TODAS las tablas sin chequear `NODE_ENV`. Si se corre contra producción (p. ej. `db:bootstrap`), borra los datos y deja una cuenta admin conocida.
+7. ✅ **RESUELTO — Seed peligroso.** `prisma/seed.ts` ahora se niega a correr con `NODE_ENV=production` (salvo `SEED_FORCE=1`) y la contraseña del admin sale de `SEED_ADMIN_PASSWORD` (con aviso si se usa el default de desarrollo).
 
-8. **Sin protección CSRF explícita** — JWT en cookie con `sameSite: "lax"` mitiga POST cross-site, pero no hay token anti-CSRF; toda la defensa de mutaciones recae en lax + CORS.
+8. ✅ **RESUELTO — Sin protección CSRF explícita.** Middleware en `app.ts`: las requests mutantes (no GET/HEAD/OPTIONS) con header `Origin` fuera de la allowlist de CORS reciben 403. Complementa `sameSite: lax`.
 
-9. **Falta `app.set("trust proxy", …)`** — con `express-rate-limit` activo, detrás de un proxy/CDN real todas las requests comparten la IP del proxy: o se bloquea a todos los usuarios o no se limita a nadie.
+9. ✅ **RESUELTO — trust proxy.** Nueva variable `TRUST_PROXY` (saltos de proxy confiables) aplicada en `app.ts`; el rate limit ve la IP real detrás de un reverse proxy.
 
 ## 🟡 Seguridad — media/baja
 
-10. **`requireAdmin`/`requireEmployee` convierten el 403 en 401** — `backend/src/middlewares/auth.middleware.ts`: el `throw` del check de rol ocurre dentro del callback que `requireAuth` ejecuta en su `try`, y el `catch` lo re-lanza como `401 Unauthorized`. El `403 Forbidden` nunca llega al cliente; cualquier error del handler interno también se disfraza de 401.
+10. ✅ **RESUELTO — 403 disfrazado de 401.** `requireAdmin`/`requireEmployee` reescritos sin anidamiento: autentican y luego verifican rol, lanzando `ForbiddenException` (403) real.
 
-11. **Logout no revoca el token** — solo borra la cookie; el JWT sigue siendo válido las 2 h restantes. No hay blacklist ni versión de token.
+11. ✅ **RESUELTO — Logout no revocaba.** Los JWT llevan `jti`; el logout añade el token a una denylist en memoria hasta su expiración (`revokeToken` en `lib/jwt.ts`, con purga periódica). Nota: con múltiples instancias habría que moverla a Redis.
 
-12. **`GET /api/services` (público) devuelve servicios inactivos** — `ServiceRepository.all()` no filtra `state`; precios y descuentos de servicios no publicados quedan expuestos. El filtrado se hace client-side en Home/Booking.
+12. ✅ **RESUELTO — Servicios inactivos expuestos.** `GET /services` usa `optionalAuth`: el público recibe solo activos; el admin sigue viendo el catálogo completo.
 
-13. **Search castea `req.query.q` sin validar** — `backend/src/controllers/search.controller.ts`: `?q[]=a&q[]=b` produce un array → `raw.replace` lanza TypeError → 500. Falta validación de tipo (los demás endpoints usan zod; este no).
+13. ✅ **RESUELTO — Search 500 con `?q[]=`.** El controller valida que `q` sea string antes de operar.
 
-14. **El driver S3 no sanitiza el slug** — `s3Driver.get` interpola `images/${slug}` directo en la Key. El driver local sí usa `path.basename`. Riesgo bajo (S3 no normaliza `../`), pero inconsistente.
+14. ✅ **RESUELTO — Slug sin sanitizar en S3.** `s3Driver.get` aplica `path.basename(slug)` igual que el driver local.
 
 ## 🟠 Lógica
 
-15. **Race condition en reservas (TOCTOU)** — `appointment.service.createBooking`: `conflicts()` y `createWithBooking()` no comparten transacción y no hay constraint de exclusión en la DB → dos requests simultáneas al mismo slot pueden doble-reservar. (Contraste: las ventas sí lo hacen bien con decremento condicional en transacción.)
+15. ✅ **RESUELTO — Race condition en reservas.** `createWithBooking` re-valida el solape DENTRO de una transacción `Serializable`; los fallos de serialización (P2034) se convierten en `ConflictException`. Dos requests simultáneas ya no pueden doble-reservar.
 
-16. **Empleados desactivados quedan irrecuperables** — `EmployeeRepository.all()` hardcodea `state: true`. El delete es soft (`state=false`), pero ni siquiera el admin puede listarlos → no hay forma de reactivarlos desde la UI. Efecto secundario: el stat del Dashboard "Empleados activos X/Y" siempre muestra X/X.
+16. ✅ **RESUELTO — Empleados desactivados irrecuperables.** `EmployeeRepository.all` acepta `includeInactive`; el admin ve (y puede reactivar) empleados con `state=false`. El stat "Empleados activos X/Y" vuelve a tener sentido.
 
-17. **Citas que cruzan medianoche no cuentan en availability** — `byEmployeeOnDateLean` filtra `scheduledAt >= dayStart`: una cita admin de ayer 23:30→00:30 no aparece al calcular la disponibilidad de hoy a las 00:00.
+17. ✅ **RESUELTO — Citas cruzando medianoche.** La consulta de disponibilidad filtra por solape real (`endsAt > dayStart AND scheduledAt < dayEnd`), no solo por citas que empiezan ese día.
 
-18. **El booking público no fuerza la grilla de 30 min** — `scheduledAt: "…T10:07:23Z"` pasa todos los checks (horario, no-solape) y fragmenta la agenda que ven los demás clientes (los slots ofrecidos siguen siendo cada 30 min pero chocan parcialmente).
+18. ✅ **RESUELTO — Grilla de 30 min no forzada.** El booking público exige segundos/ms en cero y alineación exacta a la grilla ofrecida (`(startMin - apertura) % 30 === 0`).
 
-19. **`PUT /appointments/:id` nunca valida horario laboral ni bloqueos** — al reprogramar solo chequea conflicto con otras citas; puede mover citas a días cerrados o sobre bloqueos del empleado (para admin es "por diseño", pero es la única vía de edición y no hay variante validada).
+19. ✅ **RESUELTO (por diseño, documentado)** — `PUT /appointments/:id` es admin-only y conserva deliberadamente la misma capacidad que `adminBook` (reprogramar fuera de horario es caso de uso del mostrador). El docstring del método ahora lo deja explícito; el no-solape duro se aplica siempre.
 
-20. **El sistema de notificaciones pierde mensajes** — `NotifyProvider.notify()`: `if (isVisible) return` descarta el segundo toast si llega en <5 s; peor, como `setMessage` ya corrió, el toast visible **cambia su texto a mitad de vida** sin reiniciar su timer.
+20. ✅ **RESUELTO — Toasts perdidos.** `notify()` ya no descarta avisos: el nuevo reemplaza al visible y reinicia sus timers.
 
-21. **Convención horaria frágil: la "hora del negocio" ES UTC** — slots, business hours y el frontend (`getUTCHours` en `formatTime`) asumen que la hora de pared se guarda como UTC literal. Funciona mientras nada use hora local real (Colombia = UTC-5), pero cualquier `toLocaleTimeString` o integración externa mostrará horas corridas. No está documentado en un único lugar.
+21. ✅ **RESUELTO (documentado)** — La convención "hora de pared = UTC literal" quedó documentada en un único lugar (`backend/src/lib/business-hours.ts`, cabecera) con las reglas para backend y frontend y la advertencia de qué NO hacer. Cambiarla de verdad exigiría migración de datos coordinada.
 
-22. **Card de horarios vacía mientras carga** — `Home`: si `business` aún es null, `hours = []` y la card "Horario" del bloque contacto se renderiza vacía sin estado de carga (los servicios sí tienen "Cargando…").
+22. ✅ **RESUELTO — Card de horario vacía al cargar.** Home muestra skeleton de 3 líneas mientras `business` es null.
 
-23. **`validate()` de query/params no aplica las transformaciones de zod** — `validate.middleware.ts` solo reasigna `req.body`; para `query`/`params` los datos parseados/defaults de zod se descartan (hoy no muerde porque esos schemas no transforman, pero es una trampa lista para activarse).
+23. ✅ **RESUELTO — validate() descartaba transforms de query/params.** El resultado parseado por Zod queda en `req.validated[source]`, disponible para los controllers.
 
 ## ⚪ Código muerto / sin uso
 
-**Frontend:**
-24. `src/ui/components/DatePicker.tsx` — ningún import (Booking usa `react-day-picker` directo).
-25. `src/ui/layouts/Hero/index.tsx` — sin uso; `src/ui/layouts/index.ts` lo re-exporta y ese index tampoco lo importa nadie relevante.
-26. `src/core/exceptions/NotFoundException.ts` y `RuntimeException.ts` — solo se referencian entre sí; nadie los usa.
-27. `src/lib/utils.ts` — sin imports.
-28. `src/assets/react.svg` — sin uso.
-29. Dependencia `cally` en `package.json` — cero imports.
-30. `AuthContext.register` (y su `authApi.register`) — exportado, nunca llamado desde ninguna página.
-31. `frontend/TODO.md` — desactualizado: lista como pendientes la vista de agendar cita y la lógica de asignación, que ya existen.
+24-29. ✅ **RESUELTOS — Eliminados:** `DatePicker.tsx`, `layouts/Hero/` (y su re-export), `core/exceptions/{NotFoundException,RuntimeException}.ts`, `lib/utils.ts`, `assets/react.svg`, dependencia `cally` desinstalada.
 
-**Backend:**
-32. `src/lib/uuid.ts` (`isUuid`) — sin imports en todo el backend.
+30. ✅ **RESUELTO** — `AuthContext.register` + `authApi.register` eliminados (junto con el endpoint, ver #1).
+
+31. ✅ **RESUELTO** — `frontend/TODO.md` actualizado: refleja lo completado y apunta a los documentos de auditoría vivos.
+
+32. ✅ **RESUELTO** — `backend/src/lib/uuid.ts` eliminado.
 
 ## 🔵 Estructura
 
-33. **El repositorio git está roto** — `backend` y `frontend` figuran como *gitlinks* (modo 160000, commits `25ff4ef`/`a43771f`) sin `.gitmodules` y sin `.git` interno. Consecuencia: **todo el código fuente está fuera de control de versiones**; el repo raíz solo trackea 6 archivos. Una pérdida de disco = pérdida total.
+33. ✅ **RESUELTO** (commit `8211139`) — gitlinks convertidos a directorios trackeados; 200+ archivos fuente ahora versionados.
 
-34. **Working tree sucio de base** — `.DS_Store` sin ignorar en la raíz; `docs/loop.md` borrado y `.claude/loop.md` sin commitear.
+34. ✅ **RESUELTO** (commit `8211139`) — `.DS_Store` eliminado e ignorado; working tree limpio.
 
-35. **Deuda de lint conocida (~20 errores)** — `react-hooks/set-state-in-effect` (el patrón `setLoading(true)` síncrono al inicio de efectos de fetch) repetido en los 6 managers, Dashboard, Reports, contexts; 2 errores `react-refresh/only-export-components` en `AuthContext` y `BrandingProvider`; `_id`/`_u` sin usar (×2) en `Settings/index.tsx`.
+35. ✅ **RESUELTO — Deuda de lint: 20 → 0 errores.** (a) regla `no-unused-vars` con convención `^_`; (b) los 14 `set-state-in-effect` corregidos con los patrones recomendados: estado inicial `true` sin `setLoading(true)` síncrono en montaje, sincronización prop→estado durante render (DateRangeFilter, paginación de citas), `setState` tras `await` (AuthContext, BrandingProvider), reset diferido (Booking); (c) los 2 `react-refresh` resueltos extrayendo `AuthContext` y `BrandingContext`+`useBranding` a archivos `context.ts` propios.
 
-36. **Inconsistencia de naming** — `EmployeeManager/EmployeeManager.tsx` mientras los otros 7 managers usan `*/index.tsx`.
+36. ✅ **RESUELTO** — `EmployeeManager/EmployeeManager.tsx` → `EmployeeManager/index.tsx`, consistente con los demás managers.
 
-37. **Duplicación masiva de código** —
-    - `initials()` copiado en ≥4 archivos (Home, ServiceDetail, TopCustomers, ProfileSettingsModal, employee-portal backend).
-    - `formatPrice`/`formatCurrency` con la misma config `Intl.NumberFormat("es-CO")` en ≥5 archivos.
-    - 6 FabButtons, 6 MobileLists y 6 DesktopTables prácticamente idénticos entre managers (solo cambian campos).
-    - Helper zod `isoDate` duplicado en `appointment.validators.ts` y `sale.validators.ts`.
-38. **Pérdida de type-safety deliberada** — `employee.repository`/`employee.service` usan `any` en los mappers; `service.repository` castea `data as any` en create/update; `loadBusinessHours` castea settings con `as unknown as`.
+37. ✅ **RESUELTO (núcleo) — Duplicación.** Nuevo `lib/format.ts` (única fuente de `formatPrice`/`formatCurrency`/`initials`; los utils de Dashboard/Reports/Sales re-exportan de ahí); los 6 `*FabButton` idénticos reemplazados por un `FabActions` compartido; helper zod `isoDate` extraído a `validators/common.ts`. *Nota:* las 6 MobileLists/DesktopTables siguen separadas por entidad — difieren en campos y un genérico forzado costaría legibilidad; se acepta como especialización legítima.
 
-39. **Cuatro archivos de entorno en backend** — `.env`, `.env.local`, `.env.supabase`, más dos ejemplos (`.env-example` y `.env.example`). Confuso y propenso a divergencia.
+38. ✅ **RESUELTO — Type-safety.** `employee.repository` tipado con `Prisma.EmployeeGetPayload` (cero `any`); `service.repository` cambia `as any` por compactación de `undefined` + casts estrechos contra los tipos generados de Prisma.
 
-40. **Spinners residuales vs skeletons** — quedan `loading-spinner` puntuales (TimeOff, botones) tras la migración a skeletons; menor, pero el criterio quedó mixto.
+39. ✅ **RESUELTO** — Queda 1 solo ejemplo (`.env.example`); `.env`/`.env.local`/`.env.supabase` son los entornos reales del flujo `use-db.sh` y están todos ignorados por git.
+
+40. ✅ **RESUELTO** — Último spinner de carga de página (TimeOff) reemplazado por skeleton; los spinners restantes son feedback inline de botones (intencionales).
 
 ---
 
-### Sugerencia de orden de ataque (cuando decidas arreglar)
-1. Git roto (#33) — todo lo demás depende de poder versionar.
-2. Seguridad alta: #1, #2, #3, #7 (rápidos y de alto impacto), luego #4, #5.
-3. Lógica de negocio: #15 (doble reserva) y #16 (empleados irrecuperables).
-4. Limpieza: código muerto (#24-32) y duplicación (#37) como PR mecánico.
+## Verificación final
+
+- `tsc` limpio en frontend y backend; `eslint src --quiet`: **0 errores**.
+- `npm run build` (frontend) exitoso; página pública verificada en preview sin errores de consola.
+- `npm audit`: frontend **0**; backend 3 moderate residuales dev-only (documentadas en #5).

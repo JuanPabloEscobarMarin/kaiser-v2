@@ -12,15 +12,7 @@ import { HOME_CONTENT_DEFAULTS } from "@/core/branding/home-content";
 import Navbar from "@/ui/layouts/components/NavBar";
 import { ServiceCard } from "@/ui/components/ServiceCard";
 import { Reveal } from "@/ui/components/Reveal";
-
-const initials = (fullName: string) =>
-  fullName
-    .split(/\s+/)
-    .map((p) => p[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
+import { initials } from "@/lib/format";
 
 export function HomePage() {
   const [services, setServices] = useState<Service[]>([]);
@@ -264,17 +256,31 @@ export function HomePage() {
                   <h3 className="font-bold text-lg mb-3">
                     {c.contact.hoursTitle}
                   </h3>
-                  <ul className="space-y-2">
-                    {hours.map((h) => (
-                      <li
-                        key={h.days}
-                        className="flex justify-between items-center py-1.5 border-b border-base-300 last:border-b-0 text-sm"
-                      >
-                        <span className="font-medium">{h.days}</span>
-                        <span className="text-base-content/70">{h.time}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  {hours.length === 0 ? (
+                    <ul className="space-y-2" aria-hidden="true">
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <li
+                          key={i}
+                          className="flex justify-between items-center py-1.5 border-b border-base-300 last:border-b-0"
+                        >
+                          <div className="h-4 w-28 bg-base-300 rounded animate-pulse" />
+                          <div className="h-4 w-20 bg-base-300 rounded animate-pulse" />
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <ul className="space-y-2">
+                      {hours.map((h) => (
+                        <li
+                          key={h.days}
+                          className="flex justify-between items-center py-1.5 border-b border-base-300 last:border-b-0 text-sm"
+                        >
+                          <span className="font-medium">{h.days}</span>
+                          <span className="text-base-content/70">{h.time}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
 
                   <Link to="/booking" className="btn btn-primary w-full mt-4">
                     {c.contact.ctaButton}

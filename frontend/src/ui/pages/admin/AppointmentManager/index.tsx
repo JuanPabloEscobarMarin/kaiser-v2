@@ -9,11 +9,11 @@ import type { Appointment, Employee } from "@/core/types";
 import { useNotify } from "@/ui/hooks/useNotify";
 import { AppointmentDesktopTable } from "./components/AppointmentDesktopTable";
 import { AppointmentMobileList } from "./components/AppointmentMobileList";
-import { AppointmentFabButton } from "./components/AppointmentFabButton";
 import { CreateAppointmentDrawer } from "./components/CreateAppointmentDrawer";
 import { EditAppointmentDrawer } from "./components/EditAppointmentDrawer";
 import { AppointmentCalendar } from "./components/AppointmentCalendar";
 import { ListSkeleton } from "@/ui/components/Skeletons";
+import { FabActions } from "@/ui/components/FabActions";
 
 type Filter = "ALL" | Appointment["state"];
 
@@ -43,7 +43,6 @@ export function AppointmentManager() {
   const notify = useNotify();
 
   const load = () => {
-    setLoading(true);
     Promise.all([appointmentsApi.list(), employeesApi.list()])
       .then(([apts, emps]) => {
         setList(apts);
@@ -109,10 +108,12 @@ export function AppointmentManager() {
     [list, filter],
   );
 
-  // Reset to page 1 when filter changes
-  useEffect(() => {
+  // Reset to page 1 when filter changes (ajuste durante render, sin efecto)
+  const [prevFilter, setPrevFilter] = useState<Filter>(filter);
+  if (prevFilter !== filter) {
+    setPrevFilter(filter);
     setPage(1);
-  }, [filter]);
+  }
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -233,7 +234,7 @@ export function AppointmentManager() {
         readOnly={isViewMode}
       />
 
-      <AppointmentFabButton
+      <FabActions
         onAdd={() => setCreateOpen(true)}
         onEdit={handleEditSelected}
         onDelete={() => handleDelete(selectedIds)}

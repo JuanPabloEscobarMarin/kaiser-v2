@@ -1,35 +1,7 @@
-import {
-  createContext,
-  useCallback,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { AuthContext } from "./context";
 import { authApi } from "@/core/api";
 import type { User } from "@/core/types";
-
-interface AuthContextValue {
-  user: User | null;
-  loading: boolean;
-  login: (username: string, password: string) => Promise<User>;
-  register: (data: {
-    username: string;
-    password: string;
-    phone: string;
-  }) => Promise<User>;
-  logout: () => Promise<void>;
-  refresh: () => Promise<User | null>;
-  updateProfile: (data: {
-    username?: string;
-    avatarSlug?: string | null;
-  }) => Promise<User>;
-  changePassword: (data: {
-    currentPassword: string;
-    newPassword: string;
-  }) => Promise<void>;
-}
-
-export const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -47,21 +19,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    refresh().finally(() => setLoading(false));
+    void (async () => {
+      await refresh();
+      setLoading(false);
+    })();
   }, [refresh]);
 
   const login = async (username: string, password: string) => {
     const { user } = await authApi.login(username, password);
     setUser(user);
-    return user;
-  };
-
-  const register = async (data: {
-    username: string;
-    password: string;
-    phone: string;
-  }) => {
-    const { user } = await authApi.register(data);
     return user;
   };
 
@@ -92,8 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         loading,
         login,
-        register,
-        logout,
+          logout,
         refresh,
         updateProfile,
         changePassword,

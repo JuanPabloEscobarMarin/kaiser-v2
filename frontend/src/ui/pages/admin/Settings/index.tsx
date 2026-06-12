@@ -4,7 +4,7 @@ import type { BusinessSettingsInput, HomeContent } from "@/core/types";
 import { useNotify } from "@/ui/hooks/useNotify";
 import { applyPrimaryColor } from "@/core/branding/branding";
 import { HOME_CONTENT_DEFAULTS } from "@/core/branding/home-content";
-import { useBranding } from "@/ui/contexts/branding/BrandingProvider";
+import { useBranding } from "@/ui/contexts/branding/context";
 import { HomeContentSection } from "./HomeContentSection";
 import heroDefault from "@/assets/hero-barbershop.jpg";
 

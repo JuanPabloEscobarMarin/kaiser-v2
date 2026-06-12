@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { AuthService } from "../services/auth.service.ts";
+import { revokeToken } from "../lib/jwt.ts";
 import { env } from "../config/env.ts";
 import { HttpException } from "../exceptions/HttpException.ts";
 
@@ -17,11 +18,6 @@ const requireAuth = (req: Request) => {
 };
 
 export const AuthController = {
-  async register(req: Request, res: Response) {
-    const user = await AuthService.register(req.body);
-    res.status(201).json({ message: "User registered", user });
-  },
-
   async login(req: Request, res: Response) {
     const { token, user } = await AuthService.login(req.body);
     res.cookie(COOKIE_NAME, token, COOKIE_OPTS).json({
@@ -30,7 +26,11 @@ export const AuthController = {
     });
   },
 
-  logout(_req: Request, res: Response) {
+  logout(req: Request, res: Response) {
+    // Revoca el JWT además de borrar la cookie: el token deja de ser válido
+    // de inmediato aunque alguien lo haya copiado.
+    const token = req.cookies?.[COOKIE_NAME];
+    if (token) revokeToken(token);
     res.clearCookie(COOKIE_NAME).json({ message: "Logged out" });
   },
 

@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { verifyToken, type JwtPayload } from "../lib/jwt.ts";
-import { HttpException } from "../exceptions/HttpException.ts";
+import { ForbiddenException, HttpException } from "../exceptions/HttpException.ts";
 
 declare global {
   namespace Express {
@@ -10,20 +10,24 @@ declare global {
   }
 }
 
+/** Verifica la cookie y devuelve el payload, o lanza 401. */
+const authenticate = async (req: Request): Promise<JwtPayload> => {
+  const token = req.cookies?.jwt_token;
+  if (!token) throw new HttpException("Unauthorized", 401);
+  try {
+    return await verifyToken(token);
+  } catch {
+    throw new HttpException("Unauthorized", 401);
+  }
+};
+
 export const requireAuth = async (
   req: Request,
   _res: Response,
   next: NextFunction,
 ) => {
-  const token = req.cookies?.jwt_token;
-  if (!token) throw new HttpException("Unauthorized", 401);
-
-  try {
-    req.auth = await verifyToken(token);
-    next();
-  } catch {
-    throw new HttpException("Unauthorized", 401);
-  }
+  req.auth = await authenticate(req);
+  next();
 };
 
 /**
@@ -49,26 +53,24 @@ export const optionalAuth = async (
 
 export const requireAdmin = async (
   req: Request,
-  res: Response,
+  _res: Response,
   next: NextFunction,
 ) => {
-  await requireAuth(req, res, () => {
-    if (req.auth?.role !== "ADMIN") {
-      throw new HttpException("Forbidden: admin only", 403);
-    }
-    next();
-  });
+  req.auth = await authenticate(req);
+  if (req.auth.role !== "ADMIN") {
+    throw new ForbiddenException("Forbidden: admin only");
+  }
+  next();
 };
 
 export const requireEmployee = async (
   req: Request,
-  res: Response,
+  _res: Response,
   next: NextFunction,
 ) => {
-  await requireAuth(req, res, () => {
-    if (req.auth?.role !== "EMPLOYEE") {
-      throw new HttpException("Forbidden: employee only", 403);
-    }
-    next();
-  });
+  req.auth = await authenticate(req);
+  if (req.auth.role !== "EMPLOYEE") {
+    throw new ForbiddenException("Forbidden: employee only");
+  }
+  next();
 };

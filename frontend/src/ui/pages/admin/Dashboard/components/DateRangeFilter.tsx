@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   fromYmd,
   presetRange,
@@ -26,10 +26,14 @@ export function DateRangeFilter({ range, preset, onChange }: Props) {
     toYmd(new Date(range.to.getTime() - 86_400_000)),
   );
 
-  useEffect(() => {
+  // Sincronización prop→estado durante el render (patrón recomendado por
+  // React en lugar de un efecto con setState síncrono).
+  const [prevRange, setPrevRange] = useState(range);
+  if (prevRange !== range) {
+    setPrevRange(range);
     setFrom(toYmd(range.from));
     setTo(toYmd(new Date(range.to.getTime() - 86_400_000)));
-  }, [range]);
+  }
 
   const choosePreset = (p: Preset) => {
     if (p === "CUSTOM") {

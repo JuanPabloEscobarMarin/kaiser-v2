@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
 import { useAuth } from "@/ui/hooks/useAuth";
-import { useBranding } from "@/ui/contexts/branding/BrandingProvider";
+import { useBranding } from "@/ui/contexts/branding/context";
 import { resourcesApi } from "@/core/api";
 
 const Navbar = () => {

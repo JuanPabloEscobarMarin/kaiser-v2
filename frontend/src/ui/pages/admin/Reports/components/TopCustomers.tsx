@@ -4,6 +4,7 @@ import {
   formatPrice,
   type CustomerStat,
 } from "../utils";
+import { initials } from "@/lib/format";
 
 interface Props {
   rows: CustomerStat[];
@@ -18,15 +19,6 @@ const formatDate = (iso: string | null) =>
         timeZone: "UTC",
       })
     : "—";
-
-const initials = (fullName: string) =>
-  fullName
-    .split(/\s+/)
-    .map((p) => p[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
 
 const Avatar = ({ name }: { name: string }) => (
   <div className="avatar avatar-placeholder">

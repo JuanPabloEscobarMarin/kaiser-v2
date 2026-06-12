@@ -16,7 +16,11 @@ export const errorMiddleware = (
     console.error("Unhandled error:", error);
   }
 
+  // En producción nunca exponemos mensajes internos (Prisma/PG/SDK pueden
+  // filtrar detalles de esquema o conexión); solo en desarrollo son útiles.
   const message =
-    error instanceof Error ? error.message : "Internal server error";
+    env.NODE_ENV !== "production" && error instanceof Error
+      ? error.message
+      : "Internal server error";
   return res.status(500).json({ error: message });
 };

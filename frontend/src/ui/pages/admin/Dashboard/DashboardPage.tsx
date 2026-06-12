@@ -6,7 +6,7 @@ import {
   salesApi,
   servicesApi,
 } from "@/core/api";
-import { useBranding } from "@/ui/contexts/branding/BrandingProvider";
+import { useBranding } from "@/ui/contexts/branding/context";
 import type { Appointment, Employee, Service } from "@/core/types";
 import type { Sale } from "@/core/api/sales.api";
 import { DateRangeFilter } from "./components/DateRangeFilter";
@@ -40,7 +40,6 @@ export function DashboardPage() {
   const [range, setRange] = useState<DateRange>(() => presetRange("WEEK"));
 
   useEffect(() => {
-    setLoading(true);
     Promise.all([
       appointmentsApi.list(),
       employeesApi.list(),

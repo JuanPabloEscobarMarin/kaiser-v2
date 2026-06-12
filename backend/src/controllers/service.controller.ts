@@ -2,8 +2,11 @@ import type { Request, Response } from "express";
 import { ServiceService } from "../services/service.service.ts";
 
 export const ServiceController = {
-  async list(_req: Request, res: Response) {
-    res.json(await ServiceService.list());
+  async list(req: Request, res: Response) {
+    // Público: solo servicios activos. Admin: catálogo completo (gestiona
+    // también los desactivados).
+    const isAdmin = req.auth?.role === "ADMIN";
+    res.json(await ServiceService.list(isAdmin));
   },
 
   async getById(req: Request, res: Response) {

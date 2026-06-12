@@ -1,16 +1,9 @@
-PA Kobar:
+# TODO
 
-- [ ] terminar visual formulario de edicion servicio.
-- [x] dropdown de imagen de usuario.
-- [x] Crear un componente de icono.
-- [x] Crear componente para cambiar de tema.
-- [x] enviar formulario de login usando ENTER
-- [ ] Crear vista de agendar cita (frontend)
+Histórico inicial completado: formulario de servicios, dropdown de avatar,
+componente de iconos, switcher de tema, login con ENTER, vista de agendar
+cita y lógica de asignación de citas ya están implementados.
 
-PA Kevin:
-
-- [x] solucionar campo minutos formulario nuevo servicio.
-- [x] mejoras en la experiencia de usuario al cargar los servicios.
-- [x] mostrar errores de usuario con notificaciones.
-- [ ] pasar las funcionalidades de servicios a desktop.
-- [ ] Crear logica para la asignacion de citas.
+Los pendientes reales se rastrean ahora en:
+- `docs/auditoria-codigo.md` — auditoría de seguridad/lógica/estructura.
+- `docs/animation-audit.md` — auditoría UX/animaciones.

@@ -12,6 +12,7 @@ import type { AvailabilitySlot, Employee, Service } from "@/core/types";
 import Navbar from "@/ui/layouts/components/NavBar";
 import { BaseIcon } from "@/ui/components/base/BaseIcon";
 import placeholder from "@/assets/placeholder-image.webp";
+import { formatPrice, initials } from "@/lib/format";
 
 const toYmd = (d: Date) => {
   const year = d.getFullYear();
@@ -24,22 +25,6 @@ const formatTime = (iso: string) => {
   const d = new Date(iso);
   return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
 };
-
-const formatPrice = (value: string | number) =>
-  new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    maximumFractionDigits: 0,
-  }).format(typeof value === "string" ? Number(value) : value);
-
-const initials = (fullName: string) =>
-  fullName
-    .split(/\s+/)
-    .map((p) => p[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
 
 interface CustomerForm {
   fullName: string;

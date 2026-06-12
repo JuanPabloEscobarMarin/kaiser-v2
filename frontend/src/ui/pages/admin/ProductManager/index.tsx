@@ -5,8 +5,8 @@ import { useNotify } from "@/ui/hooks/useNotify";
 import { ProductDesktopTable } from "./components/ProductDesktopTable";
 import { ProductMobileList } from "./components/ProductMobileList";
 import { CreateProductDrawer } from "./components/CreateProductDrawer";
-import { ProductFabButton } from "./components/ProductFabButton";
 import { ListSkeleton } from "@/ui/components/Skeletons";
+import { FabActions } from "@/ui/components/FabActions";
 
 export function ProductManager() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -18,7 +18,6 @@ export function ProductManager() {
   const notify = useNotify();
 
   const load = () => {
-    setLoading(true);
     productsApi
       .list()
       .then(setProducts)
@@ -113,7 +112,7 @@ export function ProductManager() {
         readOnly={isViewMode}
       />
 
-      <ProductFabButton
+      <FabActions
         onAdd={handleAdd}
         onEdit={handleEditSelected}
         onDelete={() => handleDeletes(selectedIds)}

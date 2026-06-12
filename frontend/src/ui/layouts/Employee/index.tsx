@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate } from "react-router";
 import { useAuth } from "@/ui/hooks/useAuth";
-import { useBranding } from "@/ui/contexts/branding/BrandingProvider";
+import { useBranding } from "@/ui/contexts/branding/context";
 import { resourcesApi } from "@/core/api";
 
 const NAV_ITEMS = [

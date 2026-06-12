@@ -7,10 +7,7 @@ import {
   HttpException,
   NotFoundException,
 } from "../exceptions/HttpException.ts";
-import type {
-  LoginInput,
-  RegisterInput,
-} from "../validators/auth.validators.ts";
+import type { LoginInput } from "../validators/auth.validators.ts";
 import type {
   ChangePasswordInput,
   UpdateProfileInput,
@@ -29,15 +26,6 @@ const publicUser = (u: {
 });
 
 export const AuthService = {
-  async register(data: RegisterInput) {
-    const existing = await UserRepository.byUsername(data.username);
-    if (existing) throw new ConflictException("Username already taken");
-
-    const hashed = await hashPassword(data.password);
-    const user = await UserRepository.create({ ...data, password: hashed });
-    return publicUser(user);
-  },
-
   async login(data: LoginInput) {
     const user = await UserRepository.byUsername(data.username);
     if (!user) throw new HttpException("Invalid credentials", 401);

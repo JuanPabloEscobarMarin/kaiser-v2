@@ -8,9 +8,6 @@ export const authApi = {
       password,
     }),
 
-  register: (data: { username: string; password: string; phone: string }) =>
-    api.post<{ message: string; user: User }>("/auth/register", data),
-
   logout: () => api.post<{ message: string }>("/auth/logout"),
 
   me: () => api.get<{ user: User }>("/auth/me"),

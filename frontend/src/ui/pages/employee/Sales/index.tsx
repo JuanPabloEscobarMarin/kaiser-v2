@@ -18,7 +18,6 @@ export function EmployeeSales() {
   const [detailSale, setDetailSale] = useState<Sale | null>(null);
 
   const load = () => {
-    setLoading(true);
     Promise.all([employeePortalApi.mySales(), productsApi.list()])
       .then(([s, p]) => {
         setSales(s);

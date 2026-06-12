@@ -15,7 +15,10 @@ export const NotifyProvider = () => {
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const notify = useCallback(() => {
-    if (isVisible) return;
+    // Un aviso nuevo reemplaza al visible y reinicia su tiempo de vida;
+    // antes se descartaba en silencio si llegaba dentro de los 5 s.
+    timers.current.forEach(clearTimeout);
+    timers.current = [];
 
     setIsVisible(true);
     setIsLeaving(false);
@@ -28,7 +31,7 @@ export const NotifyProvider = () => {
         setIsLeaving(false);
       }, VISIBLE_MS),
     );
-  }, [isVisible]);
+  }, []);
 
   const value = useMemo(
     () => ({

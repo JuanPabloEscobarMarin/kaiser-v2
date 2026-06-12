@@ -32,7 +32,6 @@ export function ReportsPage() {
   const [range, setRange] = useState<DateRange>(() => presetRange("MONTH"));
 
   useEffect(() => {
-    setLoading(true);
     appointmentsApi
       .list()
       .then(setAppointments)

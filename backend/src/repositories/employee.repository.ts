@@ -1,4 +1,5 @@
 import { prisma } from "../lib/prisma.ts";
+import type { Prisma } from "../../generated/prisma/client.ts";
 
 const withServices = {
   services: {
@@ -7,21 +8,23 @@ const withServices = {
       commission: true,
     },
   },
-} as const;
+} as const satisfies Prisma.EmployeeInclude;
 
-const mapServices = (e: any) => ({
+type EmployeeRow = Prisma.EmployeeGetPayload<{ include: typeof withServices }>;
+
+const mapServices = (e: EmployeeRow) => ({
   ...e,
-  services: e.services.map((es: any) => ({
+  services: e.services.map((es) => ({
     ...es.service,
     commission: String(es.commission ?? "0"),
   })),
 });
 
 export const EmployeeRepository = {
-  all: async (serviceId?: string) => {
+  all: async (serviceId?: string, includeInactive = false) => {
     const employees = await prisma.employee.findMany({
       where: {
-        state: true,
+        ...(includeInactive ? {} : { state: true }),
         ...(serviceId ? { services: { some: { serviceId } } } : {}),
       },
       orderBy: { createdAt: "desc" },

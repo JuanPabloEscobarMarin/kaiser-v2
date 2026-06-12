@@ -115,7 +115,7 @@ const router = createBrowserRouter([
                     lazy: async () => ({
                       Component: (
                         await import(
-                          "@/ui/pages/admin/EmployeeManager/EmployeeManager"
+                          "@/ui/pages/admin/EmployeeManager"
                         )
                       ).EmployeeManager,
                     }),

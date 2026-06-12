@@ -222,6 +222,18 @@ export const AppointmentService = {
     if (startMin < schedule.openMinutes || endMin > schedule.closeMinutes) {
       throw new BadRequestException("Selected time is outside business hours");
     }
+    // La hora debe caer exactamente en la grilla de slots ofrecida (cada
+    // SLOT_MINUTES desde la apertura). Sin esto, un request manual a las
+    // 10:07:23 fragmentaría la agenda del resto de clientes.
+    if (
+      start.getUTCSeconds() !== 0 ||
+      start.getUTCMilliseconds() !== 0 ||
+      (startMin - schedule.openMinutes) % SLOT_MINUTES !== 0
+    ) {
+      throw new BadRequestException(
+        "Selected time is not an offered slot",
+      );
+    }
     if (isBlocked(blocks, startMin, endMin)) {
       throw new BadRequestException(
         "Selected time is blocked for this employee",
@@ -229,6 +241,13 @@ export const AppointmentService = {
     }
   },
 
+  /**
+   * Edición admin-only. A diferencia del booking público, NO valida horario
+   * de apertura ni bloqueos del empleado: es la misma capacidad que
+   * adminBook() (reprogramar fuera de horario es un caso de uso real del
+   * mostrador). El chequeo duro de no-solape con otras citas sí se aplica
+   * SIEMPRE, más abajo.
+   */
   async update(id: string, data: UpdateAppointmentInput) {
     const current = await this.getById(id);
 

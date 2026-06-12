@@ -1,6 +1,18 @@
 /**
  * Pure helpers for reasoning about opening hours and employee schedule blocks.
  *
+ * ⚠️ CONVENCIÓN HORARIA DEL SISTEMA (leer antes de tocar fechas):
+ * La "hora de pared" del negocio se almacena como UTC LITERAL. Un corte a las
+ * 09:00 se guarda como 09:00Z, no como 14:00Z (Colombia = UTC-5). Por eso:
+ *   - El backend compara siempre con getUTCHours()/minutos UTC (este archivo,
+ *     appointment.service.ts).
+ *   - El frontend formatea siempre con getUTCHours()/timeZone:"UTC"
+ *     (formatTime en ServiceDetail, formatDate en portal empleado, etc.).
+ *   - NUNCA usar toLocaleTimeString sin timeZone:"UTC" ni new Date() local
+ *     para mostrar horas de citas: saldrían corridas 5 horas.
+ * Cambiar esta convención exige migrar datos y tocar backend + frontend a la
+ * vez; mientras tanto, mantenerla es lo que evita el corrimiento.
+ *
  * All times are handled as "minutes since 00:00 UTC" so slot math is plain
  * integer arithmetic. The booking system stores wall-clock times as UTC, so a
  * day's schedule (e.g. 09:00–18:00) is compared against the UTC time-of-day of

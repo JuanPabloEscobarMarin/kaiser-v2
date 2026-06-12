@@ -26,7 +26,9 @@ export const EmployeeService = {
    *   phone and account linkage; otherwise a public projection.
    */
   async list(serviceId?: string, includeSensitive = false) {
-    const employees = await EmployeeRepository.all(serviceId);
+    // Solo el admin ve (y puede reactivar) empleados desactivados; antes el
+    // soft-delete los hacía invisibles para siempre.
+    const employees = await EmployeeRepository.all(serviceId, includeSensitive);
     return includeSensitive ? employees : employees.map(toPublicEmployee);
   },
 
