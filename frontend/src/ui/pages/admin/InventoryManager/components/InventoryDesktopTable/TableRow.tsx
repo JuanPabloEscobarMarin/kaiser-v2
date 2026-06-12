@@ -1,12 +1,6 @@
 import type { ChangeEvent } from "react";
 import type { InventoryItem } from "@/core/api/inventory.api";
-
-const formatCurrency = (v: string) =>
-  new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    maximumFractionDigits: 0,
-  }).format(Number(v));
+import { formatCurrency } from "@/lib/format";
 
 interface Props {
   item: InventoryItem;

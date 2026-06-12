@@ -2,13 +2,7 @@ import type { ChangeEvent } from "react";
 import type { Product } from "@/core/api/products.api";
 import placeholder from "@/assets/placeholder-image.webp";
 import { resourcesApi } from "@/core/api";
-
-const formatCurrency = (v: string) =>
-  new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    maximumFractionDigits: 0,
-  }).format(Number(v));
+import { formatCurrency } from "@/lib/format";
 
 interface Props {
   product: Product;

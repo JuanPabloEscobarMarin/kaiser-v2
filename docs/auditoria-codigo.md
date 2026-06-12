@@ -78,9 +78,9 @@ mala estructura. Auditoría: 2026-06-12. **Resolución: 2026-06-12 — 39 de 40
 
 36. ✅ **RESUELTO** — `EmployeeManager/EmployeeManager.tsx` → `EmployeeManager/index.tsx`, consistente con los demás managers.
 
-37. ✅ **RESUELTO (núcleo) — Duplicación.** Nuevo `lib/format.ts` (única fuente de `formatPrice`/`formatCurrency`/`initials`; los utils de Dashboard/Reports/Sales re-exportan de ahí); los 6 `*FabButton` idénticos reemplazados por un `FabActions` compartido; helper zod `isoDate` extraído a `validators/common.ts`. *Nota:* las 6 MobileLists/DesktopTables siguen separadas por entidad — difieren en campos y un genérico forzado costaría legibilidad; se acepta como especialización legítima.
+37. ✅ **RESUELTO — Duplicación.** Nuevo `lib/format.ts` como **única** fuente de `formatPrice`/`formatCurrency`/`initials` — verificado: `grep "new Intl.NumberFormat"` solo aparece en `lib/format.ts` (se consolidaron también las 6 copias que vivían en las MobileLists/TableRows de Product/Inventory/Employee). Los 6 `*FabButton` idénticos reemplazados por un `FabActions` compartido; helper zod `isoDate` extraído a `validators/common.ts`. *Nota:* las 6 MobileLists/DesktopTables siguen separadas por entidad — difieren en campos y un genérico forzado costaría legibilidad; se acepta como especialización legítima.
 
-38. ✅ **RESUELTO — Type-safety.** `employee.repository` tipado con `Prisma.EmployeeGetPayload` (cero `any`); `service.repository` cambia `as any` por compactación de `undefined` + casts estrechos contra los tipos generados de Prisma.
+38. ✅ **RESUELTO — Type-safety.** Cero `: any` en `backend/src` (verificado por grep): `employee.repository` tipado con `Prisma.EmployeeGetPayload`, `toPublicEmployee` en `employee.service` con interfaz propia, y `service.repository` cambia `as any` por compactación de `undefined` + casts estrechos contra los tipos generados de Prisma.
 
 39. ✅ **RESUELTO** — Queda 1 solo ejemplo (`.env.example`); `.env`/`.env.local`/`.env.supabase` son los entornos reales del flujo `use-db.sh` y están todos ignorados por git.
 

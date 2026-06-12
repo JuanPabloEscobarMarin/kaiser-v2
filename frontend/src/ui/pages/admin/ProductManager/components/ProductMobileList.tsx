@@ -1,13 +1,7 @@
 import type { ChangeEvent } from "react";
 import type { Product } from "@/core/api/products.api";
 import { ProductMobileImage } from "./ProductMobileImage";
-
-const formatCurrency = (v: string) =>
-  new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    maximumFractionDigits: 0,
-  }).format(Number(v));
+import { formatCurrency } from "@/lib/format";
 
 interface Props {
   products: Product[];

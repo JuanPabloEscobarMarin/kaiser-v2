@@ -1,4 +1,5 @@
 import type { Employee } from "@/core/types";
+import { formatPrice as formatSalary } from "@/lib/format";
 
 interface Props {
   employee: Employee;
@@ -17,13 +18,6 @@ const initials = (fullName: string) =>
     .slice(0, 2)
     .join("")
     .toUpperCase();
-
-const formatSalary = (value: string) =>
-  new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    maximumFractionDigits: 0,
-  }).format(Number(value));
 
 export function TableRow({
   employee,

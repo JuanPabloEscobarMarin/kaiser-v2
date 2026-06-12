@@ -10,11 +10,18 @@ import type {
  * needs the name and which services an employee performs). Salary, commission,
  * phone and the linked user account are intentionally withheld.
  */
-const toPublicEmployee = (employee: any) => ({
+interface EmployeeLike {
+  id: string;
+  fullName: string;
+  state: boolean;
+  services?: { id: string; name: string }[];
+}
+
+const toPublicEmployee = (employee: EmployeeLike) => ({
   id: employee.id,
   fullName: employee.fullName,
   state: employee.state,
-  services: (employee.services ?? []).map((s: any) => ({
+  services: (employee.services ?? []).map((s) => ({
     id: s.id,
     name: s.name,
   })),
