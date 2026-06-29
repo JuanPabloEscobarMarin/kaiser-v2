@@ -1,5 +1,6 @@
 import type { ChangeEvent } from "react";
 import type { Employee } from "@/core/types";
+import { resourcesApi } from "@/core/api";
 import { formatPrice as formatSalary } from "@/lib/format";
 
 interface Props {
@@ -50,13 +51,24 @@ export function EmployeeMobileList({
               </div>
             </div>
             <figure className="pt-4 flex justify-center">
-              <div className="avatar avatar-placeholder">
-                <div className="bg-neutral text-neutral-content w-32 rounded-full">
-                  <span className="text-3xl font-bold">
-                    {initials(employee.fullName)}
-                  </span>
+              {employee.urlImage ? (
+                <div className="avatar">
+                  <div className="w-32 rounded-full">
+                    <img
+                      src={resourcesApi.imageUrl(employee.urlImage) ?? undefined}
+                      alt={employee.fullName}
+                    />
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="avatar avatar-placeholder">
+                  <div className="bg-neutral text-neutral-content w-32 rounded-full">
+                    <span className="text-3xl font-bold">
+                      {initials(employee.fullName)}
+                    </span>
+                  </div>
+                </div>
+              )}
             </figure>
             <div className="card-body items-center text-center">
               <h2 className="card-title">{employee.fullName}</h2>

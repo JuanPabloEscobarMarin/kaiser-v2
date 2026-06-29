@@ -9,7 +9,7 @@ const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
 
 const BUSINESS_OPEN_HOUR = 9;
-const BUSINESS_CLOSE_HOUR = 18;
+const BUSINESS_CLOSE_HOUR = 19;
 
 const startOfDayUtc = (offsetDays: number) => {
   const d = new Date();
@@ -24,6 +24,66 @@ const at = (offsetDays: number, hour: number, minutes = 0) => {
   return d;
 };
 
+const minutesAfter = (start: Date, mins: number) =>
+  new Date(start.getTime() + mins * 60_000);
+
+/** Contenido del home temático de AB Hair Studio. */
+const homeContent = {
+  hero: {
+    title: "AB Hair Studio — saca tu mejor versión",
+    subtitle:
+      "Color, corte y estilo en el corazón de Medellín. Reserva en línea en menos de un minuto, elige a tu estilista y tu horario.",
+    primaryCta: "Reservar ahora",
+    secondaryCta: "Ver servicios",
+  },
+  features: [
+    {
+      icon: "🎨",
+      title: "Expertos en color",
+      description: "Balayage, mechas y coloración con productos de alta gama.",
+    },
+    {
+      icon: "✂️",
+      title: "Cortes a tu medida",
+      description: "Damas y caballeros — asesoría de imagen personalizada.",
+    },
+    {
+      icon: "✨",
+      title: "Productos premium",
+      description: "Cuidamos tu cabello dentro y fuera del estudio.",
+    },
+  ],
+  services: {
+    title: "Nuestros servicios",
+    subtitle: "Lo más pedido en el estudio",
+  },
+  howItWorks: {
+    title: "¿Cómo funciona?",
+    subtitle: "Reservar toma menos de un minuto",
+    steps: [
+      { title: "Elige tu servicio", description: "Corte, color, barba o tratamiento" },
+      { title: "Estilista, día y hora", description: "Disponibilidad en tiempo real" },
+      { title: "Confirma con tus datos", description: "Solo nombre, teléfono y cédula" },
+    ],
+  },
+  team: {
+    title: "Nuestro equipo",
+    subtitle: "Estilistas y barberos profesionales",
+  },
+  contact: {
+    title: "Visítanos",
+    subtitle:
+      "¿Tienes dudas antes de reservar? Escríbenos por WhatsApp y te ayudamos a elegir.",
+    hoursTitle: "🕐 Horarios de atención",
+    ctaButton: "Reservar mi cita",
+  },
+  finalCta: {
+    title: "¿Lista o listo para un cambio?",
+    subtitle: "Reserva hoy en AB Hair Studio, sin necesidad de crear cuenta.",
+    button: "Reservar ahora",
+  },
+};
+
 async function main() {
   // El seed BORRA toda la base. Jamás debe correr contra producción por
   // accidente; exige confirmación explícita vía SEED_FORCE=1.
@@ -32,187 +92,277 @@ async function main() {
     process.exit(1);
   }
 
-  console.log("🌱 Seeding database...");
+  console.log("🌱 Seeding AB Hair Studio...");
 
   console.log("  → Limpiando datos existentes");
   await prisma.booking.deleteMany();
+  await prisma.saleItem.deleteMany();
+  await prisma.sale.deleteMany();
   await prisma.appointment.deleteMany();
+  await prisma.employeeScheduleBlock.deleteMany();
+  await prisma.employeeService.deleteMany();
+  await prisma.inventoryItem.deleteMany();
+  await prisma.inventoryCategory.deleteMany();
+  await prisma.product.deleteMany();
   await prisma.service.deleteMany();
   await prisma.employee.deleteMany();
   await prisma.customer.deleteMany();
   await prisma.user.deleteMany();
+  await prisma.businessSettings.deleteMany();
 
-  console.log("  → Creando usuarios admin");
-  // Credencial configurable: nunca dejar admin123 en una base real.
+  console.log("  → Configuración del negocio");
+  await prisma.businessSettings.create({
+    data: {
+      name: "AB Hair Studio",
+      phone: "6041234567",
+      whatsapp: "573001234567",
+      email: "hola@abhairstudio.com",
+      address: "Cra. 43A #18-95, El Poblado, Medellín",
+      openTimeWeekday: "09:00",
+      closeTimeWeekday: "19:00",
+      closedWeekday: false,
+      openTimeSaturday: "09:00",
+      closeTimeSaturday: "18:00",
+      closedSaturday: false,
+      openTimeSunday: "10:00",
+      closeTimeSunday: "16:00",
+      closedSunday: true,
+      heroImageSlug: "seed-hero.jpg",
+      logoSlug: "seed-logo.png",
+      primaryColor: "#6d28d9",
+      homeContent,
+    },
+  });
+
+  console.log("  → Usuario admin");
   const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "admin123";
   if (!process.env.SEED_ADMIN_PASSWORD) {
     console.warn("  ⚠️  Usando contraseña de admin por defecto (solo dev). Define SEED_ADMIN_PASSWORD para entornos reales.");
   }
-  const adminHash = await bcrypt.hash(adminPassword, 10);
   await prisma.user.create({
     data: {
       username: "admin",
-      password: adminHash,
+      password: await bcrypt.hash(adminPassword, 10),
       phone: "3000000000",
       role: "ADMIN",
     },
   });
 
-  console.log("  → Creando clientes");
-  const customers = await Promise.all([
-    prisma.customer.create({
-      data: { fullName: "Juan Pérez", phone: "3001111111", identification: "1010101010" },
-    }),
-    prisma.customer.create({
-      data: { fullName: "María García", phone: "3002222222", identification: "1020202020" },
-    }),
-    prisma.customer.create({
-      data: { fullName: "Carlos López", phone: "3003333333", identification: "1030303030" },
-    }),
-    prisma.customer.create({
-      data: { fullName: "Ana Rodríguez", phone: "3004444444", identification: "1040404040" },
-    }),
-    prisma.customer.create({
-      data: { fullName: "Sofía Martínez", phone: "3005555555", identification: "1050505050" },
-    }),
-  ]);
+  console.log("  → Cuenta de empleado (portal)");
+  const employeePassword = process.env.SEED_EMPLOYEE_PASSWORD ?? "andrea123";
+  const andreaUser = await prisma.user.create({
+    data: {
+      username: "andrea",
+      password: await bcrypt.hash(employeePassword, 10),
+      phone: "3015550010",
+      role: "EMPLOYEE",
+      avatarSlug: "seed-emp-andrea.jpg",
+    },
+  });
 
-  console.log("  → Creando servicios");
-  const services = await Promise.all([
-    prisma.service.create({
-      data: {
-        name: "Corte clásico",
-        description: "Corte de cabello tradicional con tijera y máquina",
-        price: "30000",
-        duration: 30,
-      },
-    }),
-    prisma.service.create({
-      data: {
-        name: "Corte premium",
-        description: "Corte personalizado + lavado + peinado profesional",
-        price: "45000",
-        duration: 45,
-      },
-    }),
-    prisma.service.create({
-      data: {
-        name: "Arreglo de barba",
-        description: "Perfilado, recorte y aceite hidratante",
-        price: "20000",
-        duration: 30,
-      },
-    }),
-    prisma.service.create({
-      data: {
-        name: "Afeitado clásico",
-        description: "Afeitado a navaja con toalla caliente",
-        price: "25000",
-        duration: 30,
-      },
-    }),
-    prisma.service.create({
-      data: {
-        name: "Combo corte + barba",
-        description: "Nuestro combo más pedido — ahorra al pedirlos juntos",
-        price: "45000",
-        duration: 60,
-        discount: "5000",
-      },
-    }),
-    prisma.service.create({
-      data: {
-        name: "Tinte para cabello",
-        description: "Aplicación de tinte profesional",
-        price: "60000",
-        duration: 90,
-      },
-    }),
-    prisma.service.create({
-      data: {
-        name: "Tratamiento capilar",
-        description: "Hidratación profunda y masaje capilar",
-        price: "40000",
-        duration: 45,
-      },
-    }),
-  ]);
+  console.log("  → Clientes");
+  const customers = await Promise.all(
+    [
+      { fullName: "Laura Gómez", phone: "3001111111", identification: "1010101010" },
+      { fullName: "Mateo Restrepo", phone: "3002222222", identification: "1020202020" },
+      { fullName: "Valeria Cardona", phone: "3003333333", identification: "1030303030" },
+      { fullName: "Santiago Mejía", phone: "3004444444", identification: "1040404040" },
+      { fullName: "Isabella Vélez", phone: "3005555555", identification: "1050505050" },
+      { fullName: "Juan David Ríos", phone: "3006666666", identification: "1060606060" },
+      { fullName: "Sara Ramírez", phone: "3007777777", identification: "1070707070" },
+      { fullName: "Tomás Arango", phone: "3008888888", identification: "1080808080" },
+    ].map((data) => prisma.customer.create({ data })),
+  );
 
-  console.log("  → Creando empleados");
+  console.log("  → Servicios");
+  const serviceSpecs = [
+    { name: "Corte de dama", description: "Corte, lavado y secado con asesoría de estilo", price: "45000", duration: 45, urlImage: "seed-svc-corte-dama.jpg" },
+    { name: "Corte caballero", description: "Corte clásico o moderno a máquina y tijera", price: "30000", duration: 30, urlImage: "seed-svc-corte-caballero.jpg" },
+    { name: "Barba y perfilado", description: "Perfilado, recorte y aceite hidratante", price: "22000", duration: 30, urlImage: "seed-svc-barba.jpg" },
+    { name: "Afeitado clásico a navaja", description: "Afeitado a navaja con toalla caliente", price: "28000", duration: 30, urlImage: "seed-svc-afeitado.jpg" },
+    { name: "Coloración / tinte", description: "Aplicación de color profesional de raíz a puntas", price: "90000", duration: 90, urlImage: "seed-svc-color.jpg" },
+    { name: "Mechas / balayage", description: "Iluminación y matiz para un look natural", price: "150000", duration: 120, urlImage: "seed-svc-mechas.jpg" },
+    { name: "Peinado y recogido", description: "Peinado para eventos, ondas o recogido", price: "60000", duration: 60, urlImage: "seed-svc-peinado.jpg" },
+    { name: "Diseño de barba premium", description: "Diseño, perfilado con navaja y mascarilla", price: "35000", duration: 45, discount: "5000", urlImage: "seed-svc-barba-premium.jpg" },
+  ];
+  const services = await Promise.all(
+    serviceSpecs.map((s) => prisma.service.create({ data: s })),
+  );
+  const [corteDama, corteCab, barba, afeitado, color, mechas, peinado, barbaPrem] = services;
+
+  console.log("  → Empleados");
+  // Cada empleado se crea con sus servicios + comisión (EmployeeService).
   const employees = await Promise.all([
     prisma.employee.create({
-      data: { fullName: "Carlos Pérez", phone: "3010000001", salary: "1800000" },
+      data: {
+        fullName: "Andrea Bermúdez",
+        phone: "3015550001",
+        salary: "2500000",
+        urlImage: "seed-emp-andrea.jpg",
+        userId: andreaUser.id,
+        services: {
+          create: [
+            { serviceId: corteDama!.id, commission: 30 },
+            { serviceId: color!.id, commission: 25 },
+            { serviceId: mechas!.id, commission: 25 },
+            { serviceId: peinado!.id, commission: 30 },
+          ],
+        },
+      },
     }),
     prisma.employee.create({
-      data: { fullName: "Andrés Gómez", phone: "3010000002", salary: "1600000" },
+      data: {
+        fullName: "Bryan Acosta",
+        phone: "3015550002",
+        salary: "1900000",
+        urlImage: "seed-emp-bryan.jpg",
+        services: {
+          create: [
+            { serviceId: corteCab!.id, commission: 20 },
+            { serviceId: barba!.id, commission: 25 },
+            { serviceId: afeitado!.id, commission: 25 },
+            { serviceId: barbaPrem!.id, commission: 25 },
+          ],
+        },
+      },
     }),
     prisma.employee.create({
-      data: { fullName: "Sebastián Ruiz", phone: "3010000003", salary: "1700000" },
+      data: {
+        fullName: "Camila Ortiz",
+        phone: "3015550003",
+        salary: "1800000",
+        urlImage: "seed-emp-camila.jpg",
+        services: {
+          create: [
+            { serviceId: corteDama!.id, commission: 25 },
+            { serviceId: color!.id, commission: 22 },
+            { serviceId: peinado!.id, commission: 28 },
+            { serviceId: mechas!.id, commission: 22 },
+          ],
+        },
+      },
     }),
     prisma.employee.create({
-      data: { fullName: "Daniel Martínez", phone: "3010000004", salary: "1500000" },
+      data: {
+        fullName: "Diego Salazar",
+        phone: "3015550004",
+        salary: "1750000",
+        urlImage: "seed-emp-diego.jpg",
+        services: {
+          create: [
+            { serviceId: corteCab!.id, commission: 20 },
+            { serviceId: barba!.id, commission: 22 },
+            { serviceId: afeitado!.id, commission: 22 },
+          ],
+        },
+      },
+    }),
+    prisma.employee.create({
+      data: {
+        fullName: "Valentina Ríos",
+        phone: "3015550005",
+        salary: "2000000",
+        urlImage: "seed-emp-valentina.jpg",
+        services: {
+          create: [
+            { serviceId: color!.id, commission: 28 },
+            { serviceId: mechas!.id, commission: 28 },
+            { serviceId: corteDama!.id, commission: 25 },
+            { serviceId: peinado!.id, commission: 28 },
+          ],
+        },
+      },
     }),
   ]);
+  const [andrea, bryan, camila, diego, valentina] = employees;
 
-  console.log("  → Creando citas");
+  console.log("  → Inventario");
+  const [catColor, catCuidado, catHerr, catDesech] = await Promise.all([
+    prisma.inventoryCategory.create({ data: { name: "Coloración" } }),
+    prisma.inventoryCategory.create({ data: { name: "Cuidado capilar" } }),
+    prisma.inventoryCategory.create({ data: { name: "Herramientas" } }),
+    prisma.inventoryCategory.create({ data: { name: "Desechables" } }),
+  ]);
+  await Promise.all(
+    [
+      { name: "Tinte rubio 7.0", quantity: "12", unit: "tubo", minStock: "5", cost: "18000", categoryId: catColor.id },
+      { name: "Tinte castaño 4.0", quantity: "8", unit: "tubo", minStock: "5", cost: "18000", categoryId: catColor.id },
+      { name: "Agua oxigenada 20vol", quantity: "6", unit: "litro", minStock: "3", cost: "12000", categoryId: catColor.id },
+      { name: "Shampoo neutro 5L", quantity: "4", unit: "garrafa", minStock: "2", cost: "45000", categoryId: catCuidado.id },
+      { name: "Acondicionador 5L", quantity: "3", unit: "garrafa", minStock: "2", cost: "48000", categoryId: catCuidado.id },
+      { name: "Tijeras profesionales", quantity: "6", unit: "unidad", minStock: "2", cost: "120000", categoryId: catHerr.id },
+      { name: "Máquina de corte", quantity: "4", unit: "unidad", minStock: "2", cost: "250000", categoryId: catHerr.id },
+      { name: "Capas de corte", quantity: "10", unit: "unidad", minStock: "4", cost: "30000", categoryId: catHerr.id },
+      { name: "Toallas", quantity: "50", unit: "unidad", minStock: "20", cost: "2500", categoryId: catDesech.id },
+      // Por debajo del mínimo a propósito → muestra alerta de stock bajo.
+      { name: "Guantes de nitrilo", quantity: "3", unit: "caja", minStock: "5", cost: "15000", categoryId: catDesech.id },
+    ].map((data) => prisma.inventoryItem.create({ data })),
+  );
 
-  const corte = services[0]!;
-  const cortePremium = services[1]!;
-  const barba = services[2]!;
-  const afeitado = services[3]!;
-  const combo = services[4]!;
-  const tinte = services[5]!;
+  console.log("  → Productos");
+  const productSpecs = [
+    { name: "Shampoo fortificante 300ml", description: "Fortalece y reduce la caída", price: 35000, stock: 24, commission: 10, urlImage: "seed-prod-shampoo.jpg" },
+    { name: "Acondicionador hidratante 300ml", description: "Hidratación profunda diaria", price: 38000, stock: 18, commission: 10, urlImage: "seed-prod-acond.jpg" },
+    { name: "Sérum capilar reparador", description: "Repara puntas abiertas y aporta brillo", price: 52000, stock: 15, commission: 12, urlImage: "seed-prod-serum.jpg" },
+    { name: "Aceite de argán 100ml", description: "Nutrición y antifrizz", price: 48000, stock: 20, commission: 12, urlImage: "seed-prod-aceite.jpg" },
+    { name: "Crema para peinar", description: "Define y controla el cabello", price: 28000, stock: 30, commission: 8, urlImage: "seed-prod-crema.jpg" },
+    { name: "Kit de cuidado completo", description: "Shampoo + acondicionador + sérum", price: 120000, stock: 8, commission: 15, urlImage: "seed-prod-kit.jpg" },
+    { name: "Tónico capilar", description: "Estimula el crecimiento", price: 42000, stock: 12, commission: 10, urlImage: "seed-prod-tonico.jpg" },
+    { name: "Cera modeladora mate", description: "Fijación fuerte, acabado mate", price: 32000, stock: 25, commission: 8, urlImage: "seed-prod-cera.jpg" },
+  ];
+  const products: { id: string; price: number; commission: number }[] = [];
+  for (const spec of productSpecs) {
+    const created = await prisma.product.create({
+      data: {
+        name: spec.name,
+        description: spec.description,
+        price: String(spec.price),
+        stock: spec.stock,
+        commission: spec.commission,
+        urlImage: spec.urlImage,
+      },
+    });
+    products.push({ id: created.id, price: spec.price, commission: spec.commission });
+  }
 
-  const carlos = employees[0]!;
-  const andres = employees[1]!;
-  const sebastian = employees[2]!;
-  const daniel = employees[3]!;
-
-  const juan = customers[0]!;
-  const maria = customers[1]!;
-  const carlosCust = customers[2]!;
-  const ana = customers[3]!;
-  const sofia = customers[4]!;
-
-  const minutesAfter = (start: Date, mins: number) =>
-    new Date(start.getTime() + mins * 60_000);
-
-  type AppointmentSeed = {
+  console.log("  → Citas");
+  type Appt = {
     serviceId: string;
     employeeId: string;
     scheduledAt: Date;
     duration: number;
-    state?: "SCHEDULED" | "FINISHED" | "CANCELLED";
+    state: "SCHEDULED" | "FINISHED" | "CANCELLED";
     customerId: string;
   };
+  const c = customers;
+  const seedAppointments: Appt[] = [
+    // ── HOY ──
+    { serviceId: corteDama!.id, employeeId: andrea!.id, scheduledAt: at(0, 9), duration: corteDama!.duration, state: "FINISHED", customerId: c[0]!.id },
+    { serviceId: color!.id, employeeId: valentina!.id, scheduledAt: at(0, 9, 30), duration: color!.duration, state: "FINISHED", customerId: c[4]!.id },
+    { serviceId: corteCab!.id, employeeId: bryan!.id, scheduledAt: at(0, 10), duration: corteCab!.duration, state: "FINISHED", customerId: c[1]!.id },
+    { serviceId: barba!.id, employeeId: diego!.id, scheduledAt: at(0, 11), duration: barba!.duration, state: "SCHEDULED", customerId: c[7]!.id },
+    { serviceId: peinado!.id, employeeId: camila!.id, scheduledAt: at(0, 12), duration: peinado!.duration, state: "SCHEDULED", customerId: c[2]!.id },
+    { serviceId: mechas!.id, employeeId: andrea!.id, scheduledAt: at(0, 14), duration: mechas!.duration, state: "SCHEDULED", customerId: c[6]!.id },
+    { serviceId: afeitado!.id, employeeId: bryan!.id, scheduledAt: at(0, 16), duration: afeitado!.duration, state: "CANCELLED", customerId: c[3]!.id },
 
-  const seedAppointments: AppointmentSeed[] = [
-    // ───── HOY ─────
-    { serviceId: corte.id, employeeId: carlos.id, scheduledAt: at(0, 9), duration: corte.duration, state: "FINISHED", customerId: juan.id },
-    { serviceId: barba.id, employeeId: carlos.id, scheduledAt: at(0, 10), duration: barba.duration, state: "FINISHED", customerId: maria.id },
-    { serviceId: combo.id, employeeId: andres.id, scheduledAt: at(0, 9, 30), duration: combo.duration, state: "FINISHED", customerId: sofia.id },
-    { serviceId: cortePremium.id, employeeId: sebastian.id, scheduledAt: at(0, 11), duration: cortePremium.duration, state: "SCHEDULED", customerId: ana.id },
-    { serviceId: corte.id, employeeId: daniel.id, scheduledAt: at(0, 14), duration: corte.duration, state: "SCHEDULED", customerId: carlosCust.id },
-    { serviceId: afeitado.id, employeeId: carlos.id, scheduledAt: at(0, 15), duration: afeitado.duration, state: "SCHEDULED", customerId: juan.id },
-    { serviceId: tinte.id, employeeId: andres.id, scheduledAt: at(0, 13), duration: tinte.duration, state: "CANCELLED", customerId: maria.id },
+    // ── MAÑANA ──
+    { serviceId: corteCab!.id, employeeId: diego!.id, scheduledAt: at(1, 9), duration: corteCab!.duration, state: "SCHEDULED", customerId: c[3]!.id },
+    { serviceId: color!.id, employeeId: valentina!.id, scheduledAt: at(1, 10), duration: color!.duration, state: "SCHEDULED", customerId: c[2]!.id },
+    { serviceId: corteDama!.id, employeeId: camila!.id, scheduledAt: at(1, 11), duration: corteDama!.duration, state: "SCHEDULED", customerId: c[4]!.id },
+    { serviceId: barbaPrem!.id, employeeId: bryan!.id, scheduledAt: at(1, 14), duration: barbaPrem!.duration, state: "SCHEDULED", customerId: c[1]!.id },
 
-    // ───── MAÑANA ─────
-    { serviceId: corte.id, employeeId: carlos.id, scheduledAt: at(1, 9), duration: corte.duration, state: "SCHEDULED", customerId: juan.id },
-    { serviceId: combo.id, employeeId: andres.id, scheduledAt: at(1, 10), duration: combo.duration, state: "SCHEDULED", customerId: sofia.id },
-    { serviceId: cortePremium.id, employeeId: sebastian.id, scheduledAt: at(1, 11, 30), duration: cortePremium.duration, state: "SCHEDULED", customerId: carlosCust.id },
-    { serviceId: barba.id, employeeId: daniel.id, scheduledAt: at(1, 14), duration: barba.duration, state: "SCHEDULED", customerId: ana.id },
+    // ── EN 2 DÍAS ──
+    { serviceId: mechas!.id, employeeId: andrea!.id, scheduledAt: at(2, 9), duration: mechas!.duration, state: "SCHEDULED", customerId: c[6]!.id },
+    { serviceId: corteCab!.id, employeeId: bryan!.id, scheduledAt: at(2, 12), duration: corteCab!.duration, state: "SCHEDULED", customerId: c[5]!.id },
+    { serviceId: peinado!.id, employeeId: valentina!.id, scheduledAt: at(2, 15), duration: peinado!.duration, state: "SCHEDULED", customerId: c[0]!.id },
 
-    // ───── EN 2 DIAS ─────
-    { serviceId: tinte.id, employeeId: andres.id, scheduledAt: at(2, 9), duration: tinte.duration, state: "SCHEDULED", customerId: maria.id },
-    { serviceId: combo.id, employeeId: carlos.id, scheduledAt: at(2, 11), duration: combo.duration, state: "SCHEDULED", customerId: juan.id },
-    { serviceId: corte.id, employeeId: sebastian.id, scheduledAt: at(2, 15), duration: corte.duration, state: "SCHEDULED", customerId: ana.id },
-
-    // ───── HISTORIAL ─────
-    { serviceId: corte.id, employeeId: carlos.id, scheduledAt: at(-1, 9), duration: corte.duration, state: "FINISHED", customerId: sofia.id },
-    { serviceId: combo.id, employeeId: andres.id, scheduledAt: at(-1, 10), duration: combo.duration, state: "FINISHED", customerId: maria.id },
-    { serviceId: barba.id, employeeId: sebastian.id, scheduledAt: at(-1, 14), duration: barba.duration, state: "FINISHED", customerId: juan.id },
-    { serviceId: cortePremium.id, employeeId: carlos.id, scheduledAt: at(-3, 11), duration: cortePremium.duration, state: "FINISHED", customerId: carlosCust.id },
-    { serviceId: combo.id, employeeId: andres.id, scheduledAt: at(-3, 14), duration: combo.duration, state: "FINISHED", customerId: ana.id },
+    // ── HISTORIAL ──
+    { serviceId: corteDama!.id, employeeId: andrea!.id, scheduledAt: at(-1, 9), duration: corteDama!.duration, state: "FINISHED", customerId: c[4]!.id },
+    { serviceId: color!.id, employeeId: valentina!.id, scheduledAt: at(-1, 11), duration: color!.duration, state: "FINISHED", customerId: c[2]!.id },
+    { serviceId: corteCab!.id, employeeId: diego!.id, scheduledAt: at(-2, 10), duration: corteCab!.duration, state: "FINISHED", customerId: c[1]!.id },
+    { serviceId: barba!.id, employeeId: bryan!.id, scheduledAt: at(-2, 14), duration: barba!.duration, state: "FINISHED", customerId: c[7]!.id },
+    { serviceId: mechas!.id, employeeId: camila!.id, scheduledAt: at(-3, 9), duration: mechas!.duration, state: "FINISHED", customerId: c[6]!.id },
+    { serviceId: peinado!.id, employeeId: andrea!.id, scheduledAt: at(-3, 15), duration: peinado!.duration, state: "FINISHED", customerId: c[0]!.id },
   ];
 
   for (const a of seedAppointments) {
@@ -229,25 +379,104 @@ async function main() {
         employeeId: a.employeeId,
         scheduledAt: start,
         endsAt: end,
-        state: a.state ?? "SCHEDULED",
+        state: a.state,
         booking: { create: { customerId: a.customerId } },
       },
     });
   }
 
+  console.log("  → Ventas");
+  const buildSale = (
+    employeeId: string,
+    customerId: string | null,
+    lines: { index: number; quantity: number }[],
+    createdAt: Date,
+  ) => {
+    const items = lines.map(({ index, quantity }) => {
+      const p = products[index]!;
+      const lineTotal = p.price * quantity;
+      const commissionAmount = (lineTotal * p.commission) / 100;
+      return {
+        productId: p.id,
+        quantity,
+        unitPrice: String(p.price),
+        commissionPct: String(p.commission),
+        lineTotal: String(lineTotal),
+        commissionAmount: String(commissionAmount),
+      };
+    });
+    const total = items.reduce((s, i) => s + Number(i.lineTotal), 0);
+    const commissionTotal = items.reduce((s, i) => s + Number(i.commissionAmount), 0);
+    return prisma.sale.create({
+      data: {
+        employeeId,
+        customerId,
+        total: String(total),
+        commissionTotal: String(commissionTotal),
+        createdAt,
+        items: { create: items },
+      },
+    });
+  };
+
+  await Promise.all([
+    buildSale(andrea!.id, c[0]!.id, [{ index: 0, quantity: 1 }, { index: 4, quantity: 1 }], at(0, 10)),
+    buildSale(valentina!.id, c[4]!.id, [{ index: 5, quantity: 1 }], at(0, 11)),
+    buildSale(bryan!.id, c[1]!.id, [{ index: 7, quantity: 2 }], at(0, 12)),
+    buildSale(camila!.id, c[2]!.id, [{ index: 1, quantity: 1 }, { index: 2, quantity: 1 }], at(-1, 13)),
+    buildSale(andrea!.id, null, [{ index: 3, quantity: 1 }], at(-1, 16)),
+    buildSale(diego!.id, c[7]!.id, [{ index: 6, quantity: 1 }, { index: 4, quantity: 1 }], at(-2, 15)),
+    buildSale(valentina!.id, c[6]!.id, [{ index: 5, quantity: 1 }, { index: 0, quantity: 1 }], at(-3, 11)),
+  ]);
+
+  console.log("  → Bloqueos de horario");
+  await Promise.all([
+    // Andrea descansa todos los lunes (recurrente, día completo).
+    prisma.employeeScheduleBlock.create({
+      data: {
+        employeeId: andrea!.id,
+        dayOfWeek: 1,
+        startTime: "00:00",
+        endTime: "23:59",
+        isFullDay: true,
+        reason: "Día libre",
+      },
+    }),
+    // Bryan bloquea su almuerzo pasado mañana.
+    prisma.employeeScheduleBlock.create({
+      data: {
+        employeeId: bryan!.id,
+        date: at(2, 0).toISOString().slice(0, 10),
+        startTime: "13:00",
+        endTime: "14:00",
+        isFullDay: false,
+        reason: "Almuerzo",
+      },
+    }),
+  ]);
+
   const counts = {
+    settings: await prisma.businessSettings.count(),
     users: await prisma.user.count(),
     customers: await prisma.customer.count(),
     services: await prisma.service.count(),
     employees: await prisma.employee.count(),
+    employeeServices: await prisma.employeeService.count(),
     appointments: await prisma.appointment.count(),
     bookings: await prisma.booking.count(),
+    inventoryCategories: await prisma.inventoryCategory.count(),
+    inventoryItems: await prisma.inventoryItem.count(),
+    products: await prisma.product.count(),
+    sales: await prisma.sale.count(),
+    saleItems: await prisma.saleItem.count(),
+    scheduleBlocks: await prisma.employeeScheduleBlock.count(),
   };
 
   console.log("\n✅ Seed complete");
   console.log(counts);
-  console.log("\nUsuario admin: admin / admin123");
-  console.log("Cédula de prueba para reservar: 1010101010 (Juan Pérez)");
+  console.log("\nAdmin:    admin / " + adminPassword);
+  console.log("Empleado: andrea / " + employeePassword + " (portal /employee)");
+  console.log("Cédula de prueba para reservar: 1010101010 (Laura Gómez)");
 }
 
 main()

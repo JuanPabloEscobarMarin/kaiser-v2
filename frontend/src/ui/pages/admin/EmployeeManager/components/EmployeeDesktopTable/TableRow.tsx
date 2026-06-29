@@ -1,4 +1,5 @@
 import type { Employee } from "@/core/types";
+import { resourcesApi } from "@/core/api";
 import { formatPrice as formatSalary } from "@/lib/format";
 
 interface Props {
@@ -44,13 +45,24 @@ export function TableRow({
 
       <td>
         <div className="flex items-center gap-3">
-          <div className="avatar avatar-placeholder">
-            <div className="bg-neutral text-neutral-content w-12 rounded-full">
-              <span className="text-sm font-bold">
-                {initials(employee.fullName)}
-              </span>
+          {employee.urlImage ? (
+            <div className="avatar">
+              <div className="w-12 rounded-full">
+                <img
+                  src={resourcesApi.imageUrl(employee.urlImage) ?? undefined}
+                  alt={employee.fullName}
+                />
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="avatar avatar-placeholder">
+              <div className="bg-neutral text-neutral-content w-12 rounded-full">
+                <span className="text-sm font-bold">
+                  {initials(employee.fullName)}
+                </span>
+              </div>
+            </div>
+          )}
           <span className="font-bold">{employee.fullName}</span>
         </div>
       </td>

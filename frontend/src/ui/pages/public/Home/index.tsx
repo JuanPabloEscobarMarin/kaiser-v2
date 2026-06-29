@@ -187,13 +187,24 @@ export function HomePage() {
             {employees.map((emp, i) => (
               <Reveal key={emp.id} index={i} spotlight className="h-full">
                 <div className="card bg-base-100 border border-base-300/60 shadow items-center p-5 text-center h-full transition-all duration-300 ease-out hover:scale-[1.04] hover:shadow-2xl hover:border-primary/40 hover:z-10 lg:group-hover/grid:opacity-55 lg:hover:!opacity-100 group/card">
-                  <div className="avatar avatar-placeholder">
-                    <div className="bg-neutral text-neutral-content w-20 rounded-full transition-transform duration-300 group-hover/card:scale-110">
-                      <span className="text-xl font-bold">
-                        {initials(emp.fullName)}
-                      </span>
+                  {emp.urlImage ? (
+                    <div className="avatar">
+                      <div className="w-20 rounded-full transition-transform duration-300 group-hover/card:scale-110">
+                        <img
+                          src={resourcesApi.imageUrl(emp.urlImage) ?? undefined}
+                          alt={emp.fullName}
+                        />
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="avatar avatar-placeholder">
+                      <div className="bg-neutral text-neutral-content w-20 rounded-full transition-transform duration-300 group-hover/card:scale-110">
+                        <span className="text-xl font-bold">
+                          {initials(emp.fullName)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                   <h3 className="font-semibold mt-3">{emp.fullName}</h3>
                   <p className="text-xs opacity-60">Estilista</p>
                 </div>
@@ -355,9 +366,11 @@ function Feature({
   return (
     <div className="card bg-base-100 border border-base-300/60 shadow h-full transition-all duration-300 ease-out hover:scale-[1.03] hover:shadow-2xl hover:border-primary/40 hover:z-10 lg:group-hover/grid:opacity-55 lg:hover:!opacity-100 group/card">
       <div className="card-body items-start">
-        <div className="text-3xl transition-transform duration-300 group-hover/card:scale-125 group-hover/card:-rotate-6">
-          {icon}
-        </div>
+        {icon ? (
+          <div className="text-3xl transition-transform duration-300 group-hover/card:scale-125 group-hover/card:-rotate-6">
+            {icon}
+          </div>
+        ) : null}
         <h3 className="card-title text-lg">{title}</h3>
         <p className="text-sm text-base-content/70">{desc}</p>
       </div>

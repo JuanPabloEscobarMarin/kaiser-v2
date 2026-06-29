@@ -318,13 +318,24 @@ export function ServiceDetail() {
                           <BaseIcon icon="check" size={12} viewBox="0 0 24 24" />
                         </span>
                       )}
-                      <div className="avatar avatar-placeholder">
-                        <div className="bg-neutral text-neutral-content w-14 rounded-full">
-                          <span className="text-base font-bold">
-                            {initials(emp.fullName)}
-                          </span>
+                      {emp.urlImage ? (
+                        <div className="avatar">
+                          <div className="w-14 rounded-full">
+                            <img
+                              src={resourcesApi.imageUrl(emp.urlImage) ?? undefined}
+                              alt={emp.fullName}
+                            />
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="avatar avatar-placeholder">
+                          <div className="bg-neutral text-neutral-content w-14 rounded-full">
+                            <span className="text-base font-bold">
+                              {initials(emp.fullName)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                       <span className="text-sm font-medium leading-tight text-center">
                         {emp.fullName}
                       </span>

@@ -11,6 +11,7 @@ export interface EmployeeInput {
   phone: string;
   state?: boolean;
   salary?: string;
+  urlImage?: string;
   services?: ServiceAssignment[];
 }
 

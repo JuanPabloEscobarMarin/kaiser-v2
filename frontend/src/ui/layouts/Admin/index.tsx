@@ -15,11 +15,11 @@ const NAV_ITEMS = [
   { to: "/admin/services", icon: "scissors" as const, label: "Servicios" },
   { to: "/admin/employees", icon: "users" as const, label: "Empleados" },
   { to: "/admin/appointments", icon: "calendar" as const, label: "Citas" },
-  { to: "/admin/reports", icon: "list" as const, label: "Reportes" },
-  { to: "/admin/inventory", icon: "list" as const, label: "Inventario" },
+  { to: "/admin/reports", icon: "chart" as const, label: "Reportes" },
+  { to: "/admin/inventory", icon: "box" as const, label: "Inventario" },
   { to: "/admin/products", icon: "store" as const, label: "Productos" },
-  { to: "/admin/sales", icon: "list" as const, label: "Ventas" },
-  { to: "/admin/settings", icon: "store" as const, label: "Configuración" },
+  { to: "/admin/sales", icon: "cart" as const, label: "Ventas" },
+  { to: "/admin/settings", icon: "settings" as const, label: "Configuración" },
 ];
 
 export function AdminLayout() {

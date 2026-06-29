@@ -14,6 +14,7 @@ interface EmployeeLike {
   id: string;
   fullName: string;
   state: boolean;
+  urlImage?: string | null;
   services?: { id: string; name: string }[];
 }
 
@@ -21,6 +22,7 @@ const toPublicEmployee = (employee: EmployeeLike) => ({
   id: employee.id,
   fullName: employee.fullName,
   state: employee.state,
+  urlImage: employee.urlImage ?? null,
   services: (employee.services ?? []).map((s) => ({
     id: s.id,
     name: s.name,

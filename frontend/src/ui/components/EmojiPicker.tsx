@@ -36,12 +36,23 @@ export function EmojiPicker({ value, onChange, label = "Emoji" }: Props) {
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
-          className="btn btn-outline btn-sm w-full justify-start gap-2 font-normal"
+          className="btn btn-outline btn-sm w-full justify-start gap-2 font-normal pr-8"
           aria-label="Seleccionar emoji"
         >
           <span className="text-xl leading-none">{value || "—"}</span>
           <span className="text-xs opacity-60">cambiar</span>
         </button>
+        {value ? (
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            className="btn btn-ghost btn-xs btn-circle absolute right-1 top-1/2 -translate-y-1/2"
+            aria-label="Quitar emoji"
+            title="Quitar emoji"
+          >
+            ✕
+          </button>
+        ) : null}
 
         {open && (
           <div className="absolute z-50 mt-1 bg-base-100 border border-base-300 rounded-box shadow-lg p-2 w-64">

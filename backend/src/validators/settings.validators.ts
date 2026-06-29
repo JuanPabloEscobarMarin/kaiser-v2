@@ -11,7 +11,7 @@ const homeContentSchema = z
     features: z
       .array(
         z.object({
-          icon: z.string().min(1).max(10),
+          icon: z.string().max(10),
           title: z.string().min(1).max(80),
           description: z.string().max(200),
         }),

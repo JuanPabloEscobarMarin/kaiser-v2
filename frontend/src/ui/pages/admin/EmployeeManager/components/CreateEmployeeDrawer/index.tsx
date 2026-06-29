@@ -1,5 +1,5 @@
 import { useState, useEffect, type FormEvent } from "react";
-import { ApiError, employeesApi, servicesApi } from "@/core/api";
+import { ApiError, employeesApi, resourcesApi, servicesApi } from "@/core/api";
 import type { Employee, Service } from "@/core/types";
 import type { ServiceAssignment } from "@/core/api/employees.api";
 import { useNotify } from "@/ui/hooks/useNotify";
@@ -26,6 +26,7 @@ export function CreateEmployeeDrawer({
   const [state, setState] = useState(true);
   const [assignments, setAssignments] = useState<ServiceAssignment[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [image, setImage] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -51,6 +52,7 @@ export function CreateEmployeeDrawer({
       setState(true);
       setAssignments([]);
     }
+    setImage(null);
   }, [employee, isOpen]);
 
   const isSelected = (id: string) => assignments.some((a) => a.serviceId === id);
@@ -76,7 +78,20 @@ export function CreateEmployeeDrawer({
     setLoading(true);
 
     try {
-      const payload = { fullName, phone, salary, state, services: assignments };
+      let urlImage: string | undefined;
+      if (image) {
+        const uploaded = await resourcesApi.upload(image);
+        urlImage = uploaded.slug;
+      }
+
+      const payload = {
+        fullName,
+        phone,
+        salary,
+        state,
+        services: assignments,
+        ...(urlImage ? { urlImage } : {}),
+      };
 
       if (employee) {
         await employeesApi.update(employee.id, payload);
@@ -171,6 +186,35 @@ export function CreateEmployeeDrawer({
                   readOnly={readOnly}
                   required
                 />
+              </fieldset>
+
+              <fieldset>
+                <legend className="font-semibold mb-1">Foto</legend>
+                <div className="flex items-center gap-3">
+                  {employee?.urlImage && (
+                    <div className="avatar">
+                      <div className="w-16 rounded-full">
+                        <img
+                          src={resourcesApi.imageUrl(employee.urlImage) ?? undefined}
+                          alt={employee.fullName}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {!readOnly && (
+                    <input
+                      type="file"
+                      className="file-input file-input-bordered w-full"
+                      accept="image/*"
+                      onChange={(e) => setImage(e.target.files?.[0] ?? null)}
+                    />
+                  )}
+                </div>
+                {!readOnly && (
+                  <small className="text-xs opacity-60">
+                    Máx. 5MB. Deja vacío para conservar la actual.
+                  </small>
+                )}
               </fieldset>
 
               <fieldset>

@@ -1,0 +1,6 @@
+# Las imágenes viven en Supabase Storage en producción (STORAGE_DRIVER=s3),
+# no las subimos al bundle serverless.
+uploads
+.env
+.env.local
+.env.supabase

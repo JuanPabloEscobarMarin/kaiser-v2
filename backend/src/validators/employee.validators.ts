@@ -12,6 +12,7 @@ export const createEmployeeSchema = z.object({
   phone: z.string().min(7).max(20),
   state: z.boolean().optional().default(true),
   salary: decimalLike.optional().default("0"),
+  urlImage: z.string().max(200).nullable().optional(),
   services: z.array(serviceAssignmentSchema).optional().default([]),
 });
 

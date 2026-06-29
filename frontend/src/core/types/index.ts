@@ -73,6 +73,7 @@ export interface Employee {
   phone: string;
   state: boolean;
   salary: string;
+  urlImage?: string | null;
   userId?: string | null;
   services?: EmployeeService[];
 }
