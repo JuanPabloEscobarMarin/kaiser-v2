@@ -4,5 +4,5 @@
   "buildCommand": "prisma generate && esbuild src/app.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/app.js",
   "outputDirectory": "public",
   "rewrites": [{ "source": "/(.*)", "destination": "/api" }],
-  "crons": [{ "path": "/api/cron/reminders", "schedule": "0 * * * *" }]
+  "crons": [{ "path": "/api/cron/reminders", "schedule": "0 13 * * *" }]
 }
