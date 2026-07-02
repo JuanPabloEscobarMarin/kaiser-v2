@@ -78,7 +78,8 @@ export function AppointmentMobileList({
                   </div>
                   {customer && (
                     <div className="text-xs opacity-60">
-                      CC: {customer.identification} · {customer.phone}
+                      {customer.phone}
+                      {customer.email ? ` · ${customer.email}` : ""}
                     </div>
                   )}
                 </div>

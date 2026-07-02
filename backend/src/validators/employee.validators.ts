@@ -1,6 +1,5 @@
 import { z } from "zod";
-
-const decimalLike = z.union([z.string(), z.number()]).transform((v) => String(v));
+import { optionalBirthDate } from "./common.ts";
 
 const serviceAssignmentSchema = z.object({
   serviceId: z.string().uuid(),
@@ -11,7 +10,7 @@ export const createEmployeeSchema = z.object({
   fullName: z.string().min(1).max(100),
   phone: z.string().min(7).max(20),
   state: z.boolean().optional().default(true),
-  salary: decimalLike.optional().default("0"),
+  birthDate: optionalBirthDate,
   urlImage: z.string().max(200).nullable().optional(),
   services: z.array(serviceAssignmentSchema).optional().default([]),
 });

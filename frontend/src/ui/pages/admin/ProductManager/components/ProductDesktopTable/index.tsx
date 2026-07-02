@@ -24,6 +24,7 @@ export function ProductDesktopTable({
             <th>Nombre</th>
             <th>Descripción</th>
             <th>Precio</th>
+            <th>Utilidad</th>
             <th>Stock</th>
             <th>Estado</th>
           </tr>
@@ -40,7 +41,7 @@ export function ProductDesktopTable({
           ))}
           {data.length === 0 && (
             <tr>
-              <td colSpan={6} className="text-center opacity-60 py-6">
+              <td colSpan={7} className="text-center opacity-60 py-6">
                 Sin productos registrados
               </td>
             </tr>

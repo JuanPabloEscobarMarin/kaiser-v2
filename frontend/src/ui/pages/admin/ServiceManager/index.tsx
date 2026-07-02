@@ -4,6 +4,8 @@ import type { Service } from "@/core/types";
 import { ServiceMobileList } from "./components/ServiceMobileList";
 import { ServiceDesktopTable } from "./components/ServiceDesktopTable";
 import { CreateServiceDrawer } from "./components/CreateServiceDrawer";
+import { CategoriesModal } from "./components/CategoriesModal";
+import { PackagesModal } from "./components/PackagesModal";
 import { useNotify } from "@/ui/hooks/useNotify";
 import { ListSkeleton } from "@/ui/components/Skeletons";
 import { FabActions } from "@/ui/components/FabActions";
@@ -15,6 +17,8 @@ export function ServiceManager() {
   const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [isViewMode, setIsViewMode] = useState(false);
+  const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
+  const [isPackagesOpen, setIsPackagesOpen] = useState(false);
   const notify = useNotify();
 
   const load = () => {
@@ -77,6 +81,23 @@ export function ServiceManager() {
 
   return (
     <>
+      <div className="flex justify-end gap-2 mb-3">
+        <button
+          type="button"
+          className="btn btn-sm btn-outline"
+          onClick={() => setIsPackagesOpen(true)}
+        >
+          Gestionar combos
+        </button>
+        <button
+          type="button"
+          className="btn btn-sm btn-outline"
+          onClick={() => setIsCategoriesOpen(true)}
+        >
+          Gestionar categorías
+        </button>
+      </div>
+
       {loading && services.length === 0 && <ListSkeleton rows={4} />}
 
       <ServiceDesktopTable
@@ -98,6 +119,17 @@ export function ServiceManager() {
         onClose={handleCloseDrawer}
         service={selectedService}
         readOnly={isViewMode}
+      />
+
+      <CategoriesModal
+        isOpen={isCategoriesOpen}
+        onClose={() => setIsCategoriesOpen(false)}
+        onChanged={load}
+      />
+
+      <PackagesModal
+        isOpen={isPackagesOpen}
+        onClose={() => setIsPackagesOpen(false)}
       />
 
       <FabActions

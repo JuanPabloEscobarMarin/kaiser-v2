@@ -8,6 +8,8 @@ export const createServiceSchema = z.object({
   duration: z.coerce.number().int().positive(),
   state: z.boolean().optional().default(true),
   discount: decimalLike.optional().default("0"),
+  variablePrice: z.boolean().optional().default(false),
+  categoryId: z.string().uuid().nullable().optional(),
   urlImage: z.string().optional(),
   description: z.string().optional(),
 });

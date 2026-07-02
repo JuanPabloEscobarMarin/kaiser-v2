@@ -7,13 +7,19 @@ export const CustomerRepository = {
 
   byId: (id: string) => prisma.customer.findUnique({ where: { id } }),
 
-  byIdentification: (identification: string) =>
-    prisma.customer.findUnique({ where: { identification } }),
+  byPhone: (phone: string) =>
+    prisma.customer.findUnique({ where: { phone } }),
 
+  // El cliente se identifica de forma única por su teléfono (antes: cédula).
   upsert: (data: CustomerInput) =>
     prisma.customer.upsert({
-      where: { identification: data.identification },
+      where: { phone: data.phone },
       create: data,
-      update: { fullName: data.fullName, phone: data.phone },
+      update: {
+        fullName: data.fullName,
+        // Solo sobrescribe si el cliente aporta el dato (no borra lo ya guardado).
+        ...(data.email ? { email: data.email } : {}),
+        ...(data.birthDate ? { birthDate: data.birthDate } : {}),
+      },
     }),
 };

@@ -7,25 +7,25 @@ export class HttpException extends Error {
 }
 
 export class NotFoundException extends HttpException {
-  constructor(message = "Not found") {
+  constructor(message = "No encontrado") {
     super(message, 404);
   }
 }
 
 export class ConflictException extends HttpException {
-  constructor(message = "Conflict") {
+  constructor(message = "Conflicto") {
     super(message, 409);
   }
 }
 
 export class BadRequestException extends HttpException {
-  constructor(message = "Bad request") {
+  constructor(message = "Solicitud inválida") {
     super(message, 400);
   }
 }
 
 export class ForbiddenException extends HttpException {
-  constructor(message = "Forbidden") {
+  constructor(message = "Acceso denegado") {
     super(message, 403);
   }
 }

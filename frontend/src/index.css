@@ -5,6 +5,15 @@
     dark --prefersdark;
 }
 
+/* Tipografías configurables (Google Fonts inyectadas por branding.ts).
+   Si no hay fuente elegida, se cae al stack por defecto de Tailwind. */
+body {
+  font-family: var(--font-body, ui-sans-serif, system-ui, sans-serif);
+}
+h1, h2, h3, h4, h5, .card-title {
+  font-family: var(--font-heading, var(--font-body, inherit));
+}
+
 @utility animate-section-in {
   animation: section-in 0.35s ease-out both;
 }

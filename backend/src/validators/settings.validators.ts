@@ -82,6 +82,22 @@ export const businessSettingsSchema = z.object({
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/, "Color inválido (usa formato hex como #570df8)")
     .optional(),
+  secondaryColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/, "Color inválido (usa formato hex como #570df8)")
+    .nullable()
+    .optional(),
+  accentColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/, "Color inválido (usa formato hex como #570df8)")
+    .nullable()
+    .optional(),
+  fontHeading: z.string().max(60).nullable().optional(),
+  fontBody: z.string().max(60).nullable().optional(),
+  instagramUrl: z.string().max(200).nullable().optional(),
+  facebookUrl: z.string().max(200).nullable().optional(),
+  tiktokUrl: z.string().max(200).nullable().optional(),
+  youtubeUrl: z.string().max(200).nullable().optional(),
   homeContent: homeContentSchema,
 });
 

@@ -12,7 +12,7 @@ export const createSaleSchema = z.object({
       }),
     )
     .min(1, "La venta debe tener al menos un producto"),
-  // Optional walk-in customer (upserted by identification, like bookings).
+  // Cliente walk-in opcional (se hace upsert por teléfono, igual que en reservas).
   customer: customerSchema.optional().nullable(),
   // Seller. Only honored for admin requests; the employee portal forces its own id.
   employeeId: z.string().uuid().optional().nullable(),

@@ -62,7 +62,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const emp = await prisma.employee.findUnique({ where: { id: String(req.params.id) } });
     if (!emp) {
-      res.status(404).json({ message: "Employee not found" });
+      res.status(404).json({ message: "Empleado no encontrado" });
       return;
     }
     if (emp.userId) {
@@ -73,7 +73,7 @@ router.post(
     const existing = await prisma.user.findFirst({
       where: { OR: [{ username }, { phone }] },
     });
-    if (existing) throw new ConflictException("Username or phone already taken");
+    if (existing) throw new ConflictException("El usuario o el teléfono ya están en uso");
 
     const hashed = await hashPassword(password);
     const user = await prisma.user.create({

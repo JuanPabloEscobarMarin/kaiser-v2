@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { DayPicker } from "react-day-picker";
 import {
   ApiError,
@@ -7,8 +7,14 @@ import {
   employeesApi,
   resourcesApi,
   servicesApi,
+  servicePackagesApi,
 } from "@/core/api";
-import type { AvailabilitySlot, Employee, Service } from "@/core/types";
+import type {
+  AvailabilitySlot,
+  Employee,
+  Service,
+  ServicePackage,
+} from "@/core/types";
 import Navbar from "@/ui/layouts/components/NavBar";
 import { BaseIcon } from "@/ui/components/base/BaseIcon";
 import placeholder from "@/assets/placeholder-image.webp";
@@ -29,13 +35,15 @@ const formatTime = (iso: string) => {
 interface CustomerForm {
   fullName: string;
   phone: string;
-  identification: string;
+  email: string;
+  birthDate: string;
 }
 
 const emptyCustomer: CustomerForm = {
   fullName: "",
   phone: "",
-  identification: "",
+  email: "",
+  birthDate: "",
 };
 
 type Step = 1 | 2 | 3 | 4;
@@ -52,9 +60,14 @@ const scrollToSection = (el: HTMLElement | null) => {
 
 export function ServiceDetail() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const comboId = searchParams.get("combo");
   const navigate = useNavigate();
 
   const [service, setService] = useState<Service | null>(null);
+  const [combo, setCombo] = useState<ServicePackage | null>(null);
+  const [allServices, setAllServices] = useState<Service[]>([]);
+  const [extraIds, setExtraIds] = useState<string[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [date, setDate] = useState<Date | undefined>(new Date());
@@ -108,6 +121,7 @@ export function ServiceDetail() {
 
   useEffect(() => {
     if (!id) return;
+    setExtraIds([]);
     servicesApi
       .byId(id)
       .then(setService)
@@ -116,9 +130,31 @@ export function ServiceDetail() {
       .list({ serviceId: id })
       .then(setEmployees)
       .catch(() => setEmployees([]));
+    servicesApi
+      .list()
+      .then((s) => setAllServices(s.filter((x) => x.state)))
+      .catch(() => setAllServices([]));
   }, [id]);
 
+  // Modo combo: la reserva usa el paquete (precio propio) en vez de servicios sueltos.
+  useEffect(() => {
+    if (!comboId) {
+      setCombo(null);
+      return;
+    }
+    servicePackagesApi
+      .byId(comboId)
+      .then(setCombo)
+      .catch(() => setCombo(null));
+  }, [comboId]);
+
   const dateYmd = useMemo(() => (date ? toYmd(date) : null), [date]);
+
+  // Servicio principal (de la ruta) + servicios extra que agregue el cliente.
+  const serviceIds = useMemo(
+    () => (service ? [service.id, ...extraIds] : []),
+    [service, extraIds],
+  );
 
   useEffect(() => {
     if (!service || !employee || !dateYmd) {
@@ -130,19 +166,20 @@ export function ServiceDetail() {
     setSelectedSlot(null);
     appointmentsApi
       .availability({
-        serviceId: service.id,
         employeeId: employee.id,
         date: dateYmd,
+        ...(combo
+          ? { packageId: combo.id }
+          : { serviceIds: serviceIds.join(",") }),
       })
       .then((res) => setSlots(res.slots))
       .catch(() => setSlots([]))
       .finally(() => setLoadingSlots(false));
-  }, [service, employee, dateYmd]);
+  }, [service, employee, dateYmd, serviceIds, combo]);
 
   const customerComplete =
     customer.fullName.trim().length >= 2 &&
-    customer.phone.trim().length >= 7 &&
-    customer.identification.trim().length >= 5;
+    customer.phone.trim().length >= 7;
 
   const currentStep: Step = !employee
     ? 1
@@ -162,7 +199,7 @@ export function ServiceDetail() {
     setError(null);
     try {
       await appointmentsApi.book({
-        serviceId: service.id,
+        ...(combo ? { packageId: combo.id } : { serviceIds }),
         employeeId: employee.id,
         scheduledAt: selectedSlot.start,
         customer,
@@ -205,6 +242,14 @@ export function ServiceDetail() {
   const imageUrl = resourcesApi.imageUrl(service.urlImage) ?? placeholder;
   const discount = Number(service.discount);
   const finalPrice = Math.max(0, Number(service.price) - discount);
+  const extraServices = extraIds
+    .map((sid) => allServices.find((x) => x.id === sid))
+    .filter((s): s is Service => Boolean(s));
+  const extrasTotal = extraServices.reduce(
+    (sum, s) => sum + Math.max(0, Number(s.price) - Number(s.discount)),
+    0,
+  );
+  const combinedTotal = combo ? Number(combo.price) : finalPrice + extrasTotal;
 
   return (
     <div className="min-h-screen bg-base-200">
@@ -286,6 +331,68 @@ export function ServiceDetail() {
       </div>
 
       <div className="container mx-auto px-4 pb-10 max-w-4xl space-y-4">
+        {/* Banner de combo */}
+        {combo && (
+          <div className="alert alert-info">
+            <span>
+              Estás reservando el combo <strong>{combo.name}</strong> por{" "}
+              {formatPrice(combo.price)} —{" "}
+              {combo.items.map((i) => i.service?.name).filter(Boolean).join(" + ")}
+            </span>
+          </div>
+        )}
+
+        {/* 0. Servicios adicionales (opcional) — oculto en modo combo */}
+        {!combo && allServices.filter((s) => s.id !== service.id).length > 0 && (
+          <section className="card bg-base-100 shadow">
+            <div className="card-body">
+              <h2 className="text-lg font-semibold">
+                ¿Agregar más servicios?{" "}
+                <span className="text-sm font-normal opacity-60">
+                  (opcional)
+                </span>
+              </h2>
+              <p className="text-sm opacity-60">
+                Combina varios servicios en una sola cita.
+              </p>
+              <div className="grid sm:grid-cols-2 gap-2 mt-2">
+                {allServices
+                  .filter((s) => s.id !== service.id)
+                  .map((s) => {
+                    const checked = extraIds.includes(s.id);
+                    return (
+                      <label
+                        key={s.id}
+                        className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${
+                          checked
+                            ? "border-primary bg-primary/5"
+                            : "border-base-300 hover:border-primary/40"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          className="checkbox checkbox-sm checkbox-primary"
+                          checked={checked}
+                          onChange={() =>
+                            setExtraIds((cur) =>
+                              cur.includes(s.id)
+                                ? cur.filter((x) => x !== s.id)
+                                : [...cur, s.id],
+                            )
+                          }
+                        />
+                        <span className="flex-1 text-sm">{s.name}</span>
+                        <span className="text-xs opacity-60">
+                          {s.duration} min
+                        </span>
+                      </label>
+                    );
+                  })}
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* 1. Profesional */}
         <section className="card bg-base-100 shadow">
           <div className="card-body">
@@ -474,25 +581,36 @@ export function ServiceDetail() {
 
                 <fieldset>
                   <legend className="text-sm font-medium mb-1">
-                    Cédula o identificación
+                    Correo (opcional)
                   </legend>
                   <input
-                    type="text"
+                    type="email"
                     className="input input-bordered w-full"
-                    placeholder="Ej: 1234567890"
-                    value={customer.identification}
+                    placeholder="Ej: juan@correo.com"
+                    value={customer.email}
                     onChange={(e) =>
-                      setCustomer({
-                        ...customer,
-                        identification: e.target.value,
-                      })
+                      setCustomer({ ...customer, email: e.target.value })
+                    }
+                  />
+                </fieldset>
+
+                <fieldset>
+                  <legend className="text-sm font-medium mb-1">
+                    Fecha de nacimiento (opcional)
+                  </legend>
+                  <input
+                    type="date"
+                    className="input input-bordered w-full"
+                    value={customer.birthDate}
+                    onChange={(e) =>
+                      setCustomer({ ...customer, birthDate: e.target.value })
                     }
                   />
                 </fieldset>
               </div>
 
               <p className="text-xs opacity-60 mt-1">
-                Si ya has reservado antes con esta cédula, vincularemos tu
+                Si ya has reservado antes con este teléfono, vincularemos tu
                 historial automáticamente.
               </p>
 
@@ -501,8 +619,16 @@ export function ServiceDetail() {
 
               <h3 className="font-semibold mb-2">Resumen de tu reserva</h3>
               <dl className="text-sm grid grid-cols-2 gap-y-1.5 gap-x-4">
-                <dt className="opacity-60">Servicio</dt>
-                <dd className="font-medium">{service.name}</dd>
+                <dt className="opacity-60">
+                  {combo ? "Combo" : extraServices.length > 0 ? "Servicios" : "Servicio"}
+                </dt>
+                <dd className="font-medium">
+                  {combo
+                    ? combo.name
+                    : [service.name, ...extraServices.map((s) => s.name)].join(
+                        " + ",
+                      )}
+                </dd>
 
                 <dt className="opacity-60">Profesional</dt>
                 <dd className="font-medium">{employee?.fullName}</dd>
@@ -521,7 +647,7 @@ export function ServiceDetail() {
 
                 <dt className="font-semibold">Total</dt>
                 <dd className="font-bold text-primary text-base">
-                  {formatPrice(finalPrice)}
+                  {formatPrice(String(combinedTotal))}
                 </dd>
               </dl>
 

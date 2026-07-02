@@ -10,7 +10,7 @@ export const SearchController = {
     const q = raw.replace(/\+/g, " ").trim();
 
     if (q.length < 2) {
-      throw new BadRequestException("Query must be at least 2 characters");
+      throw new BadRequestException("La búsqueda debe tener al menos 2 caracteres");
     }
 
     const results = await SearchService.search(q);

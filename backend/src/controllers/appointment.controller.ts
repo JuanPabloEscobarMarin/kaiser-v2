@@ -20,8 +20,16 @@ export const AppointmentController = {
     res.json(
       await AppointmentService.availability({
         employeeId: req.query.employeeId as string,
-        serviceId: req.query.serviceId as string,
         date: req.query.date as string,
+        ...(req.query.serviceId
+          ? { serviceId: req.query.serviceId as string }
+          : {}),
+        ...(req.query.serviceIds
+          ? { serviceIds: req.query.serviceIds as string }
+          : {}),
+        ...(req.query.packageId
+          ? { packageId: req.query.packageId as string }
+          : {}),
       }),
     );
   },

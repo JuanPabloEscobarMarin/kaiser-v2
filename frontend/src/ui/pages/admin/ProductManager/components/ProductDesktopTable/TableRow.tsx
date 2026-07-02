@@ -13,6 +13,9 @@ interface Props {
 
 export function TableRow({ product, checked, isChecked, onViewDetails }: Readonly<Props>) {
   const imageUrl = resourcesApi.imageUrl(product.urlImage) ?? placeholder;
+  const priceNum = Number(product.price);
+  const profit = priceNum - Number(product.saleCost);
+  const margin = priceNum > 0 ? (profit / priceNum) * 100 : 0;
 
   return (
     <tr
@@ -46,6 +49,12 @@ export function TableRow({ product, checked, isChecked, onViewDetails }: Readonl
         {product.description}
       </td>
       <td>{formatCurrency(product.price)}</td>
+      <td>
+        <span className={profit >= 0 ? "text-success" : "text-error"}>
+          {formatCurrency(profit)}{" "}
+          <span className="opacity-60">({margin.toFixed(0)}%)</span>
+        </span>
+      </td>
       <td>{product.stock}</td>
       <td>
         <span className={`badge ${product.state ? "badge-success" : "badge-error"}`}>

@@ -3,6 +3,8 @@ import { ApiError, employeesApi, resourcesApi, servicesApi } from "@/core/api";
 import type { Employee, Service } from "@/core/types";
 import type { ServiceAssignment } from "@/core/api/employees.api";
 import { useNotify } from "@/ui/hooks/useNotify";
+import { EmployeeDeductions } from "../EmployeeDeductions";
+import { EmployeeDailyClose } from "../EmployeeDailyClose";
 
 interface Props {
   reload?: () => void;
@@ -22,7 +24,7 @@ export function CreateEmployeeDrawer({
   const { setMessage, notify } = useNotify();
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
-  const [salary, setSalary] = useState("0");
+  const [birthDate, setBirthDate] = useState("");
   const [state, setState] = useState(true);
   const [assignments, setAssignments] = useState<ServiceAssignment[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -37,7 +39,7 @@ export function CreateEmployeeDrawer({
     if (employee) {
       setFullName(employee.fullName);
       setPhone(employee.phone);
-      setSalary(employee.salary?.toString() || "0");
+      setBirthDate(employee.birthDate ? employee.birthDate.slice(0, 10) : "");
       setState(employee.state);
       setAssignments(
         employee.services?.map((s) => ({
@@ -48,7 +50,7 @@ export function CreateEmployeeDrawer({
     } else {
       setFullName("");
       setPhone("");
-      setSalary("0");
+      setBirthDate("");
       setState(true);
       setAssignments([]);
     }
@@ -87,7 +89,7 @@ export function CreateEmployeeDrawer({
       const payload = {
         fullName,
         phone,
-        salary,
+        birthDate: birthDate || null,
         state,
         services: assignments,
         ...(urlImage ? { urlImage } : {}),
@@ -176,15 +178,15 @@ export function CreateEmployeeDrawer({
               </fieldset>
 
               <fieldset>
-                <legend className="font-semibold mb-1">Salario base</legend>
+                <legend className="font-semibold mb-1">
+                  Fecha de nacimiento (opcional)
+                </legend>
                 <input
-                  type="number"
+                  type="date"
                   className="input w-full input-bordered"
-                  placeholder="0"
-                  value={salary}
-                  onChange={(e) => setSalary(e.target.value)}
+                  value={birthDate}
+                  onChange={(e) => setBirthDate(e.target.value)}
                   readOnly={readOnly}
-                  required
                 />
               </fieldset>
 
@@ -297,6 +299,14 @@ export function CreateEmployeeDrawer({
                   disabled={readOnly}
                 />
               </label>
+
+              {/* Economía del empleado — solo para empleados existentes */}
+              {employee && (
+                <>
+                  <EmployeeDeductions employeeId={employee.id} />
+                  <EmployeeDailyClose employeeId={employee.id} />
+                </>
+              )}
 
               <div className="flex justify-end gap-2 pt-4 border-t border-base-200">
                 <button

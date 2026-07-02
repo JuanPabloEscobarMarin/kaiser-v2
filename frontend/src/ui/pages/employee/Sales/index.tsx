@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { employeePortalApi, productsApi } from "@/core/api";
+import { employeePortalApi } from "@/core/api";
 import type { Sale } from "@/core/api/sales.api";
 import type { Product } from "@/core/api/products.api";
 import { CreateSaleDrawer } from "@/ui/pages/admin/SalesManager/components/CreateSaleDrawer";
@@ -18,7 +18,7 @@ export function EmployeeSales() {
   const [detailSale, setDetailSale] = useState<Sale | null>(null);
 
   const load = () => {
-    Promise.all([employeePortalApi.mySales(), productsApi.list()])
+    Promise.all([employeePortalApi.mySales(), employeePortalApi.products()])
       .then(([s, p]) => {
         setSales(s);
         setProducts(p);

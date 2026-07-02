@@ -49,6 +49,9 @@ export function ServiceCard({ service }: Props) {
               </div>
             )}
             <div className="text-xl font-bold text-primary">
+              {service.variablePrice && (
+                <span className="text-xs font-normal opacity-70 mr-1">desde</span>
+              )}
               {formatPrice(finalPrice.toString())}
             </div>
           </div>

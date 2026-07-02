@@ -23,7 +23,7 @@ export const InventoryController = {
 
   async getItem(req: Request, res: Response) {
     const item = await InventoryRepository.itemById(String(req.params.id));
-    if (!item) throw new NotFoundException("Item not found");
+    if (!item) throw new NotFoundException("Artículo no encontrado");
     res.json(item);
   },
 
@@ -34,14 +34,14 @@ export const InventoryController = {
 
   async updateItem(req: Request, res: Response) {
     const existing = await InventoryRepository.itemById(String(req.params.id));
-    if (!existing) throw new NotFoundException("Item not found");
+    if (!existing) throw new NotFoundException("Artículo no encontrado");
     const item = await InventoryRepository.updateItem(String(req.params.id), req.body);
     res.json({ message: "Item updated", data: item });
   },
 
   async deleteItem(req: Request, res: Response) {
     const existing = await InventoryRepository.itemById(String(req.params.id));
-    if (!existing) throw new NotFoundException("Item not found");
+    if (!existing) throw new NotFoundException("Artículo no encontrado");
     await InventoryRepository.deleteItem(String(req.params.id));
     res.json({ message: "Item deleted", id: req.params.id });
   },

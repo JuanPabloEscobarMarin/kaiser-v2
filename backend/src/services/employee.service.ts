@@ -7,7 +7,7 @@ import type {
 
 /**
  * Fields safe to expose to anonymous callers (the public booking flow only
- * needs the name and which services an employee performs). Salary, commission,
+ * needs the name and which services an employee performs). Commission,
  * phone and the linked user account are intentionally withheld.
  */
 interface EmployeeLike {
@@ -31,7 +31,7 @@ const toPublicEmployee = (employee: EmployeeLike) => ({
 
 export const EmployeeService = {
   /**
-   * @param includeSensitive when true (admins only) returns salary, commission,
+   * @param includeSensitive when true (admins only) returns commission,
    *   phone and account linkage; otherwise a public projection.
    */
   async list(serviceId?: string, includeSensitive = false) {
@@ -43,7 +43,7 @@ export const EmployeeService = {
 
   async getById(id: string) {
     const employee = await EmployeeRepository.byId(id);
-    if (!employee) throw new NotFoundException("Employee not found");
+    if (!employee) throw new NotFoundException("Empleado no encontrado");
     return employee;
   },
 

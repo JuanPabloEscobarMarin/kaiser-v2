@@ -16,15 +16,27 @@ export const ServiceRepository = {
     prisma.service.findMany({
       where: includeInactive ? {} : { state: true },
       orderBy: { createdAt: "desc" },
+      include: { category: { select: { id: true, name: true, order: true } } },
     }),
 
-  byId: (id: string) => prisma.service.findUnique({ where: { id } }),
+  byId: (id: string) =>
+    prisma.service.findUnique({
+      where: { id },
+      include: { category: { select: { id: true, name: true, order: true } } },
+    }),
 
   create: (data: CreateServiceInput) =>
-    prisma.service.create({ data: compact(data) as Prisma.ServiceCreateInput }),
+    prisma.service.create({
+      data: compact(data) as Prisma.ServiceCreateInput,
+      include: { category: { select: { id: true, name: true, order: true } } },
+    }),
 
   update: (id: string, data: UpdateServiceInput) =>
-    prisma.service.update({ where: { id }, data: compact(data) as Prisma.ServiceUpdateInput }),
+    prisma.service.update({
+      where: { id },
+      data: compact(data) as Prisma.ServiceUpdateInput,
+      include: { category: { select: { id: true, name: true, order: true } } },
+    }),
 
   delete: (id: string) => prisma.service.delete({ where: { id } }),
 

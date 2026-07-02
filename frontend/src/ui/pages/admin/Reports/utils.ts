@@ -23,6 +23,11 @@ export const filterByRange = (apts: Appointment[], range: DateRange) =>
 // ─────────── Money / time helpers ──────────────────────────────────────────
 
 const priceOf = (a: Appointment) => {
+  // Precio variable: si se capturó un precio final al cerrar la cita, prima
+  // sobre el precio base del servicio.
+  if (a.finalPrice != null && a.finalPrice !== "") {
+    return Math.max(0, Number(a.finalPrice));
+  }
   const price = Number(a.service?.price ?? 0);
   const discount = Number(a.service?.discount ?? 0);
   return Math.max(0, price - discount);
@@ -59,7 +64,7 @@ export const summarize = (apts: Appointment[]): PeriodSummary => {
     else if (a.state === "CANCELLED") summary.cancelled++;
     if (a.state !== "CANCELLED") summary.expectedRevenue += priceOf(a);
     if (a.state === "FINISHED") summary.confirmedRevenue += priceOf(a);
-    const id = a.booking?.customer?.identification;
+    const id = a.booking?.customer?.phone;
     if (id) customers.add(id);
   }
   summary.uniqueCustomers = customers.size;
@@ -74,9 +79,9 @@ export const diff = (current: number, previous: number) => {
 // ─────────── Top customers ─────────────────────────────────────────────────
 
 export interface CustomerStat {
-  identification: string;
-  fullName: string;
   phone: string;
+  fullName: string;
+  email: string | null;
   appointments: number;
   finished: number;
   totalSpent: number;
@@ -92,11 +97,11 @@ export const customerStats = (apts: Appointment[]): CustomerStat[] => {
     const c = a.booking?.customer;
     if (!c) continue;
     const cur =
-      map.get(c.identification) ??
+      map.get(c.phone) ??
       ({
-        identification: c.identification,
-        fullName: c.fullName,
         phone: c.phone,
+        fullName: c.fullName,
+        email: c.email ?? null,
         appointments: 0,
         finished: 0,
         totalSpent: 0,
@@ -114,7 +119,7 @@ export const customerStats = (apts: Appointment[]): CustomerStat[] => {
     if (!cur.firstVisit || t < cur.firstVisit) cur.firstVisit = t;
     if (!cur.lastVisit || t > cur.lastVisit) cur.lastVisit = t;
 
-    map.set(c.identification, cur);
+    map.set(c.phone, cur);
   }
 
   for (const v of map.values()) {
@@ -143,7 +148,7 @@ export const returnRate = (
   const byCustomer = new Map<string, string[]>();
 
   for (const a of apts) {
-    const id = a.booking?.customer?.identification;
+    const id = a.booking?.customer?.phone;
     if (!id) continue;
     if (a.state === "CANCELLED") continue;
     const arr = byCustomer.get(id) ?? [];
@@ -253,7 +258,7 @@ export const appointmentsRows = (apts: Appointment[]) =>
     descuento: Number(a.service?.discount ?? 0),
     profesional: a.employee?.fullName ?? "",
     cliente: a.booking?.customer?.fullName ?? "",
-    cedula: a.booking?.customer?.identification ?? "",
+    correo: a.booking?.customer?.email ?? "",
     telefono: a.booking?.customer?.phone ?? "",
     creada_en: a.createdAt,
   }));
@@ -261,7 +266,7 @@ export const appointmentsRows = (apts: Appointment[]) =>
 export const customersRows = (rows: CustomerStat[]) =>
   rows.map((r) => ({
     nombre: r.fullName,
-    cedula: r.identification,
+    correo: r.email ?? "",
     telefono: r.phone,
     citas: r.appointments,
     finalizadas: r.finished,

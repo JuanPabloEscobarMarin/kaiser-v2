@@ -26,7 +26,7 @@ export function EmployeeDesktopTable({
             <th></th>
             <th>Nombre</th>
             <th>Teléfono</th>
-            <th>Salario</th>
+            <th>Nacimiento</th>
             <th>Estado</th>
             <th></th>
           </tr>

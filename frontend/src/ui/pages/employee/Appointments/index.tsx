@@ -43,6 +43,8 @@ const ALL_STATES: ApptState[] = ["SCHEDULED", "FINISHED", "CANCELLED"];
 export function EmployeeAppointments() {
   const [profile, setProfile] = useState<EmployeeProfile | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [teamAppointments, setTeamAppointments] = useState<Appointment[]>([]);
+  const [viewTeam, setViewTeam] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Appointment | null>(null);
   const [busy, setBusy] = useState(false);
@@ -63,6 +65,15 @@ export function EmployeeAppointments() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Carga perezosa de la agenda de todo el equipo (solo lectura).
+  useEffect(() => {
+    if (!viewTeam) return;
+    employeePortalApi
+      .teamAgenda()
+      .then(setTeamAppointments)
+      .catch(() => setTeamAppointments([]));
+  }, [viewTeam]);
 
   const changeStatus = async (appointment: Appointment, state: ApptState) => {
     setBusy(true);
@@ -101,26 +112,53 @@ export function EmployeeAppointments() {
           fullName: profile.fullName,
           phone: profile.phone,
           state: profile.state,
-          salary: profile.salary,
         },
       ]
     : [];
 
+  // En modo equipo, los empleados del calendario se derivan de las citas.
+  const teamEmployees: Employee[] = Array.from(
+    new Map(
+      teamAppointments
+        .filter((a) => a.employee)
+        .map((a) => [a.employee!.id, a.employee!]),
+    ).values(),
+  );
+
+  const displayed = viewTeam ? teamAppointments : appointments;
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Mi horario</h1>
-        <p className="text-sm opacity-60">
-          {appointments.length} cita{appointments.length === 1 ? "" : "s"} en total
-        </p>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h1 className="text-2xl font-bold">
+            {viewTeam ? "Agenda del equipo" : "Mi horario"}
+          </h1>
+          <p className="text-sm opacity-60">
+            {displayed.length} cita{displayed.length === 1 ? "" : "s"}
+            {viewTeam ? " (solo lectura)" : " en total"}
+          </p>
+        </div>
+        <label className="label cursor-pointer gap-2">
+          <span className="text-sm">Ver todo el equipo</span>
+          <input
+            type="checkbox"
+            className="toggle toggle-primary"
+            checked={viewTeam}
+            onChange={(e) => {
+              setViewTeam(e.target.checked);
+              setSelected(null);
+            }}
+          />
+        </label>
       </div>
 
       {/* Vista de horario (calendario) */}
       {profile && (
         <AppointmentCalendar
-          appointments={appointments}
-          employees={selfAsEmployee}
-          lockedEmployeeId={profile.id}
+          appointments={displayed}
+          employees={viewTeam ? teamEmployees : selfAsEmployee}
+          {...(viewTeam ? {} : { lockedEmployeeId: profile.id })}
           onAppointmentClick={setSelected}
         />
       )}
@@ -139,7 +177,7 @@ export function EmployeeAppointments() {
               </tr>
             </thead>
             <tbody className="stagger-rows">
-              {appointments.map((a) => {
+              {displayed.map((a) => {
                 const stateInfo =
                   STATE_LABELS[a.state] ?? { label: a.state, class: "badge-ghost" };
                 return (
@@ -159,7 +197,7 @@ export function EmployeeAppointments() {
                   </tr>
                 );
               })}
-              {appointments.length === 0 && (
+              {displayed.length === 0 && (
                 <tr>
                   <td colSpan={4} className="text-center opacity-60 py-6">
                     Sin citas registradas
@@ -222,28 +260,44 @@ export function EmployeeAppointments() {
               </dd>
             </dl>
             <div className="mt-4">
-              <p className="text-xs opacity-60 mb-2">Cambiar estado:</p>
-              <div className="flex flex-wrap gap-2">
-                {ALL_STATES.filter((s) => s !== selected.state).map((s) => (
+              {selected.employeeId === profile?.id ? (
+                <>
+                  <p className="text-xs opacity-60 mb-2">Cambiar estado:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {ALL_STATES.filter((s) => s !== selected.state).map((s) => (
+                      <button
+                        key={s}
+                        className={`btn btn-sm ${STATE_ACTIONS[s].btn}`}
+                        disabled={busy}
+                        onClick={() => changeStatus(selected, s)}
+                      >
+                        {busy && (
+                          <span className="loading loading-spinner loading-xs" />
+                        )}
+                        {STATE_ACTIONS[s].label}
+                      </button>
+                    ))}
+                    <button
+                      className="btn btn-sm btn-ghost ml-auto"
+                      onClick={() => setSelected(null)}
+                    >
+                      Cerrar
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs opacity-60">
+                    Cita de otro profesional (solo lectura)
+                  </span>
                   <button
-                    key={s}
-                    className={`btn btn-sm ${STATE_ACTIONS[s].btn}`}
-                    disabled={busy}
-                    onClick={() => changeStatus(selected, s)}
+                    className="btn btn-sm btn-ghost"
+                    onClick={() => setSelected(null)}
                   >
-                    {busy && (
-                      <span className="loading loading-spinner loading-xs" />
-                    )}
-                    {STATE_ACTIONS[s].label}
+                    Cerrar
                   </button>
-                ))}
-                <button
-                  className="btn btn-sm btn-ghost ml-auto"
-                  onClick={() => setSelected(null)}
-                >
-                  Cerrar
-                </button>
-              </div>
+                </div>
+              )}
             </div>
           </div>
           <div className="modal-backdrop" onClick={() => setSelected(null)} />

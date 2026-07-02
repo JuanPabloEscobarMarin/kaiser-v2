@@ -1,7 +1,6 @@
 import type { ChangeEvent } from "react";
 import type { Employee } from "@/core/types";
 import { resourcesApi } from "@/core/api";
-import { formatPrice as formatSalary } from "@/lib/format";
 
 interface Props {
   employees: Employee[];
@@ -72,9 +71,7 @@ export function EmployeeMobileList({
             </figure>
             <div className="card-body items-center text-center">
               <h2 className="card-title">{employee.fullName}</h2>
-              <p className="text-sm opacity-80">
-                {formatSalary(employee.salary)}
-              </p>
+              <p className="text-sm opacity-80">{employee.phone}</p>
             </div>
           </div>
         </li>

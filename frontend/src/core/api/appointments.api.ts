@@ -7,16 +7,22 @@ import type {
 
 export const appointmentsApi = {
   availability: (params: {
-    serviceId: string;
     employeeId: string;
     date: string;
+    serviceId?: string;
+    serviceIds?: string; // uuids separados por coma
+    packageId?: string;
   }) => {
-    const qs = new URLSearchParams(params).toString();
+    const qs = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v) as [string, string][],
+    ).toString();
     return api.get<AvailabilityResponse>(`/appointments/availability?${qs}`);
   },
 
   book: (data: {
-    serviceId: string;
+    serviceId?: string;
+    serviceIds?: string[];
+    packageId?: string;
     employeeId: string;
     scheduledAt: string;
     customer: CustomerInput;
@@ -27,10 +33,13 @@ export const appointmentsApi = {
     ),
 
   adminBook: (data: {
-    serviceId: string;
+    serviceId?: string;
+    serviceIds?: string[];
+    packageId?: string;
     employeeId: string;
     scheduledAt: string;
     customer: CustomerInput;
+    notes?: string;
   }) =>
     api.post<{ message: string; data: Appointment }>(
       "/appointments/admin-book",
@@ -48,6 +57,8 @@ export const appointmentsApi = {
       employeeId: string;
       scheduledAt: string;
       state: "SCHEDULED" | "CANCELLED" | "FINISHED";
+      finalPrice: string | null;
+      notes: string;
     }>,
   ) =>
     api.put<{ message: string; data: Appointment }>(`/appointments/${id}`, data),

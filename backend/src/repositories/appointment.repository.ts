@@ -11,9 +11,14 @@ export interface AppointmentFilters {
 
 export interface CreateAppointmentData {
   serviceId: string;
+  // Todos los servicios de la cita (incluye el principal). Permite multi-servicio.
+  serviceIds: string[];
+  packageId?: string | null;
   employeeId: string;
   scheduledAt: Date;
   endsAt: Date;
+  finalPrice?: string | null;
+  notes?: string | null;
 }
 
 export interface UpdateAppointmentData {
@@ -22,11 +27,19 @@ export interface UpdateAppointmentData {
   scheduledAt?: Date;
   endsAt?: Date;
   state?: AppointmentState;
+  finalPrice?: string | null;
+  notes?: string | null;
 }
 
 const fullInclude = {
   service: true,
   employee: true,
+  services: {
+    include: {
+      service: { select: { id: true, name: true, price: true, duration: true } },
+    },
+  },
+  package: true,
   booking: { include: { customer: true } },
 } as const;
 
@@ -117,7 +130,7 @@ export const AppointmentRepository = {
           });
           if (overlap) {
             throw new ConflictException(
-              "Employee already has an appointment in this time range",
+              "El empleado ya tiene una cita en este horario",
             );
           }
           return tx.appointment.create({
@@ -126,6 +139,12 @@ export const AppointmentRepository = {
               employeeId: data.employeeId,
               scheduledAt: data.scheduledAt,
               endsAt: data.endsAt,
+              ...(data.packageId ? { packageId: data.packageId } : {}),
+              ...(data.finalPrice != null ? { finalPrice: data.finalPrice } : {}),
+              ...(data.notes !== undefined ? { notes: data.notes } : {}),
+              services: {
+                create: data.serviceIds.map((serviceId) => ({ serviceId })),
+              },
               booking: { create: { customerId: data.customerId } },
             },
             include: fullInclude,
@@ -141,7 +160,7 @@ export const AppointmentRepository = {
         (err as { code?: string }).code === "P2034"
       ) {
         throw new ConflictException(
-          "Employee already has an appointment in this time range",
+          "El empleado ya tiene una cita en este horario",
         );
       }
       throw err;

@@ -10,7 +10,7 @@ export interface EmployeeInput {
   fullName: string;
   phone: string;
   state?: boolean;
-  salary?: string;
+  birthDate?: string | null;
   urlImage?: string;
   services?: ServiceAssignment[];
 }

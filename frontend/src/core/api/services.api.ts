@@ -7,6 +7,8 @@ export interface ServiceInput {
   duration: number;
   state?: boolean;
   discount?: string;
+  variablePrice?: boolean;
+  categoryId?: string | null;
   urlImage?: string;
   description?: string;
 }

@@ -21,6 +21,6 @@ export const errorMiddleware = (
   const message =
     env.NODE_ENV !== "production" && error instanceof Error
       ? error.message
-      : "Internal server error";
+      : "Error interno del servidor";
   return res.status(500).json({ error: message });
 };

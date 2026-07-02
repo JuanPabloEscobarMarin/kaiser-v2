@@ -55,7 +55,7 @@ export function TableRow({
       <td>
         <div>{customer?.fullName ?? "—"}</div>
         <div className="text-xs opacity-60">
-          CC: {customer?.identification ?? "—"}
+          {customer?.email ?? "—"}
         </div>
       </td>
       <td>{customer?.phone ?? "—"}</td>

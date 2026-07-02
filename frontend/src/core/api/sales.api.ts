@@ -28,7 +28,8 @@ export interface CreateSaleInput {
   customer?: {
     fullName: string;
     phone: string;
-    identification: string;
+    email?: string | null;
+    birthDate?: string | null;
   } | null;
   employeeId?: string | null;
 }

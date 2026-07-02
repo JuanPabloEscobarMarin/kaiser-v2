@@ -1,6 +1,5 @@
 import type { Employee } from "@/core/types";
 import { resourcesApi } from "@/core/api";
-import { formatPrice as formatSalary } from "@/lib/format";
 
 interface Props {
   employee: Employee;
@@ -68,7 +67,7 @@ export function TableRow({
       </td>
 
       <td>{employee.phone}</td>
-      <td>{formatSalary(employee.salary)}</td>
+      <td>{employee.birthDate ? employee.birthDate.slice(0, 10) : "—"}</td>
       <td>
         <span
           className={`badge ${employee.state ? "badge-success" : "badge-error"}`}

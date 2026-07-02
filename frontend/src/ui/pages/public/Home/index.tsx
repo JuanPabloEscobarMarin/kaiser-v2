@@ -3,21 +3,25 @@ import { Link } from "react-router";
 import heroDefault from "@/assets/hero-barbershop.jpg";
 import {
   employeesApi,
+  galleryApi,
   resourcesApi,
   servicesApi,
   settingsApi,
 } from "@/core/api";
 import type { BusinessSettings, Employee, Service } from "@/core/types";
+import type { GalleryImage } from "@/core/api/gallery.api";
 import { HOME_CONTENT_DEFAULTS } from "@/core/branding/home-content";
 import Navbar from "@/ui/layouts/components/NavBar";
 import { ServiceCard } from "@/ui/components/ServiceCard";
 import { Reveal } from "@/ui/components/Reveal";
+import { SocialLinks } from "@/ui/components/SocialLinks";
 import { initials } from "@/lib/format";
 
 export function HomePage() {
   const [services, setServices] = useState<Service[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [business, setBusiness] = useState<BusinessSettings | null>(null);
+  const [gallery, setGallery] = useState<GalleryImage[]>([]);
 
   useEffect(() => {
     servicesApi
@@ -32,6 +36,10 @@ export function HomePage() {
       .get()
       .then(setBusiness)
       .catch(() => setBusiness(null));
+    galleryApi
+      .list()
+      .then(setGallery)
+      .catch(() => setGallery([]));
   }, []);
 
   const c = business?.homeContent ?? HOME_CONTENT_DEFAULTS;
@@ -214,6 +222,32 @@ export function HomePage() {
         </section>
       )}
 
+      {/* GALERÍA */}
+      {gallery.length > 0 && (
+        <section className="container mx-auto px-4 py-12 max-w-5xl">
+          <Reveal>
+            <h2 className="text-3xl font-bold text-center mb-2">Galería</h2>
+            <p className="text-center text-base-content/70 mb-8">
+              Algunos de nuestros trabajos
+            </p>
+          </Reveal>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {gallery.map((img, i) => (
+              <Reveal key={img.id} index={i}>
+                <figure className="overflow-hidden rounded-box group aspect-square shadow-sm hover:shadow-xl transition-shadow duration-300">
+                  <img
+                    src={resourcesApi.imageUrl(img.slug) ?? undefined}
+                    alt={img.caption ?? "Trabajo de la barbería"}
+                    loading="lazy"
+                    className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-110"
+                  />
+                </figure>
+              </Reveal>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* CONTACTO */}
       <section
         id="contacto"
@@ -258,6 +292,10 @@ export function HomePage() {
                     />
                   </>
                 )}
+                <SocialLinks
+                  business={business}
+                  className="flex items-center gap-4 mt-4 text-primary"
+                />
               </div>
             </Reveal>
 
@@ -328,6 +366,7 @@ export function HomePage() {
               )}
               <h3 className="text-xl font-bold">{business?.name ?? "Kaiser"}</h3>
               <p className="text-sm opacity-70">{business?.address ?? ""}</p>
+              <SocialLinks business={business} className="flex items-center gap-4 mt-3" />
             </div>
             <nav className="flex flex-wrap gap-4 text-sm">
               <Link to="/booking" className="link link-hover">

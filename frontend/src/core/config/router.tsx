@@ -165,6 +165,13 @@ const router = createBrowserRouter([
                         .SalesManager,
                     }),
                   },
+                  {
+                    path: "promotions",
+                    lazy: async () => ({
+                      Component: (await import("@/ui/pages/admin/Promotions"))
+                        .PromotionsPage,
+                    }),
+                  },
                 ],
               },
             ],

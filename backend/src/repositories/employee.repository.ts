@@ -38,7 +38,7 @@ export const EmployeeRepository = {
     return e ? mapServices(e) : null;
   },
 
-  create: async (data: { fullName: string; phone: string; state: boolean; salary: string; urlImage?: string | null | undefined; services: { serviceId: string; commission: number }[] }) => {
+  create: async (data: { fullName: string; phone: string; state: boolean; birthDate?: Date | null; urlImage?: string | null | undefined; services: { serviceId: string; commission: number }[] }) => {
     const { services, urlImage, ...fields } = data;
     const e = await prisma.employee.create({
       data: {
@@ -53,7 +53,7 @@ export const EmployeeRepository = {
     return mapServices(e);
   },
 
-  update: async (id: string, data: { fullName?: string; phone?: string; state?: boolean; salary?: string; urlImage?: string | null | undefined; services?: { serviceId: string; commission: number }[] }) => {
+  update: async (id: string, data: { fullName?: string; phone?: string; state?: boolean; birthDate?: Date | null; urlImage?: string | null | undefined; services?: { serviceId: string; commission: number }[] }) => {
     const { services, urlImage, ...fields } = data;
     const e = await prisma.employee.update({
       where: { id },

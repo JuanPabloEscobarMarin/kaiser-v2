@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { servicesApi } from "@/core/api";
-import type { Service } from "@/core/types";
+import { Link } from "react-router";
+import { servicesApi, servicePackagesApi } from "@/core/api";
+import type { Service, ServicePackage } from "@/core/types";
 import { ServiceCard } from "@/ui/components/ServiceCard";
 import { Reveal } from "@/ui/components/Reveal";
 import { ServiceSearchTool } from "./components/ServiceSearchTool";
 import Navbar from "@/ui/layouts/components/NavBar";
+import { formatPrice } from "@/lib/format";
 
 const useDebounced = <T,>(value: T, delay: number) => {
   const [debounced, setDebounced] = useState(value);
@@ -17,6 +19,7 @@ const useDebounced = <T,>(value: T, delay: number) => {
 
 export function BookingPage() {
   const [allServices, setAllServices] = useState<Service[]>([]);
+  const [packages, setPackages] = useState<ServicePackage[]>([]);
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Service[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,6 +40,10 @@ export function BookingPage() {
       .then(setAllServices)
       .catch(() => setAllServices([]))
       .finally(() => setLoading(false));
+    servicePackagesApi
+      .list()
+      .then((p) => setPackages(p.filter((x) => x.state && x.items.length > 0)))
+      .catch(() => setPackages([]));
   }, []);
 
   useEffect(() => {
@@ -70,6 +77,24 @@ export function BookingPage() {
     [allServices, searchResults],
   );
 
+  // Agrupación por categoría (solo al navegar; la búsqueda va en lista plana).
+  const grouped = useMemo(() => {
+    const map = new Map<
+      string,
+      { name: string; order: number; items: Service[] }
+    >();
+    for (const s of services) {
+      const key = s.category?.id ?? "__none__";
+      const name = s.category?.name ?? "Sin categoría";
+      const order = s.category?.order ?? 9999;
+      if (!map.has(key)) map.set(key, { name, order, items: [] });
+      map.get(key)!.items.push(s);
+    }
+    return Array.from(map.values()).sort(
+      (a, b) => a.order - b.order || a.name.localeCompare(b.name),
+    );
+  }, [services]);
+
   const isSearching = query.trim().length >= 2;
 
   return (
@@ -92,6 +117,44 @@ export function BookingPage() {
           </div>
         </div>
       </section>
+
+      {/* Combos */}
+      {!isSearching && packages.length > 0 && (
+        <section className="container mx-auto px-4 pt-8 max-w-5xl">
+          <h2 className="text-xl font-semibold mb-4">Combos</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {packages.map((p, i) => (
+              <Reveal key={p.id} index={i} className="h-full">
+                <Link
+                  to={`/booking/${p.items[0]!.serviceId}?combo=${p.id}`}
+                  className="card bg-base-100 border border-primary/30 shadow-md h-full hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300"
+                >
+                  <div className="card-body p-5">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="card-title text-base">{p.name}</h3>
+                      <span className="badge badge-primary shrink-0">Combo</span>
+                    </div>
+                    <p className="text-sm text-base-content/70">
+                      {p.items
+                        .map((it) => it.service?.name)
+                        .filter(Boolean)
+                        .join(" + ")}
+                    </p>
+                    {p.description && (
+                      <p className="text-sm text-base-content/60 line-clamp-2">
+                        {p.description}
+                      </p>
+                    )}
+                    <div className="text-xl font-bold text-primary mt-2">
+                      {formatPrice(p.price)}
+                    </div>
+                  </div>
+                </Link>
+              </Reveal>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Lista */}
       <section className="container mx-auto px-4 py-8 max-w-5xl">
@@ -142,15 +205,34 @@ export function BookingPage() {
               )}
             </div>
           </div>
-        ) : (
+        ) : isSearching ? (
           <div
-            key={isSearching ? debouncedQuery : "all"}
+            key={debouncedQuery}
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 group/grid"
           >
             {services.map((s, i) => (
               <Reveal key={s.id} index={i} spotlight className="h-full">
                 <ServiceCard service={s} />
               </Reveal>
+            ))}
+          </div>
+        ) : (
+          <div key="all" className="space-y-8">
+            {grouped.map((g) => (
+              <div key={g.name}>
+                {grouped.length > 1 && (
+                  <h3 className="text-lg font-semibold mb-3 opacity-80">
+                    {g.name}
+                  </h3>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 group/grid">
+                  {g.items.map((s, i) => (
+                    <Reveal key={s.id} index={i} spotlight className="h-full">
+                      <ServiceCard service={s} />
+                    </Reveal>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         )}

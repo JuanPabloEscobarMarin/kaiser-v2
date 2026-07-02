@@ -1,6 +1,11 @@
 import { useState, useEffect, type ChangeEvent, type FormEvent } from "react";
-import { ApiError, resourcesApi, servicesApi } from "@/core/api";
-import type { Service } from "@/core/types";
+import {
+  ApiError,
+  resourcesApi,
+  servicesApi,
+  serviceCategoriesApi,
+} from "@/core/api";
+import type { Service, ServiceCategory } from "@/core/types";
 import { useNotify } from "@/ui/hooks/useNotify";
 
 interface Props {
@@ -23,10 +28,17 @@ export function CreateServiceDrawer({
   const [price, setPrice] = useState("");
   const [duration, setDuration] = useState(0);
   const [discount, setDiscount] = useState("0");
+  const [variablePrice, setVariablePrice] = useState(false);
+  const [categoryId, setCategoryId] = useState("");
+  const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [description, setDescription] = useState("");
   const [state, setState] = useState(true);
   const [image, setImage] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    serviceCategoriesApi.list().then(setCategories).catch(() => setCategories([]));
+  }, []);
 
   useEffect(() => {
     if (service) {
@@ -34,6 +46,8 @@ export function CreateServiceDrawer({
       setPrice(service.price.toString());
       setDuration(service.duration);
       setDiscount(service.discount?.toString() || "0");
+      setVariablePrice(service.variablePrice ?? false);
+      setCategoryId(service.categoryId ?? "");
       setDescription(service.description || "");
       setState(service.state);
     } else {
@@ -41,6 +55,8 @@ export function CreateServiceDrawer({
       setPrice("");
       setDuration(0);
       setDiscount("0");
+      setVariablePrice(false);
+      setCategoryId("");
       setDescription("");
       setState(true);
     }
@@ -65,6 +81,8 @@ export function CreateServiceDrawer({
         duration,
         state,
         discount,
+        variablePrice,
+        categoryId: categoryId || null,
         description,
         ...(urlImage ? { urlImage } : {}),
       };
@@ -134,9 +152,41 @@ export function CreateServiceDrawer({
                 />
               </fieldset>
 
+              <fieldset>
+                <legend className="font-semibold mb-1">Categoría</legend>
+                <select
+                  className="select select-bordered w-full"
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
+                  disabled={readOnly}
+                >
+                  <option value="">Sin categoría</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </fieldset>
+
+              <label className="label cursor-pointer">
+                <span className="font-medium">
+                  Precio variable (se muestra "desde" y se ajusta al finalizar)
+                </span>
+                <input
+                  type="checkbox"
+                  className="toggle toggle-primary"
+                  checked={variablePrice}
+                  onChange={(e) => setVariablePrice(e.target.checked)}
+                  disabled={readOnly}
+                />
+              </label>
+
               <div className="grid grid-cols-2 gap-3">
                 <fieldset>
-                  <legend className="font-semibold mb-1">Precio</legend>
+                  <legend className="font-semibold mb-1">
+                    {variablePrice ? "Precio (desde)" : "Precio"}
+                  </legend>
                   <input
                     type="number"
                     className="input w-full input-bordered"

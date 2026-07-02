@@ -7,7 +7,11 @@ import { createBlockSchema } from "../validators/employee-blocks.validators.ts";
 import { createSaleSchema } from "../validators/sale.validators.ts";
 import { EmployeeBlocksRepository } from "../repositories/employee-blocks.repository.ts";
 import { AppointmentRepository } from "../repositories/appointment.repository.ts";
+import { ProductRepository } from "../repositories/product.repository.ts";
 import { SaleService } from "../services/sale.service.ts";
+import { NotificationService } from "../services/notification.service.ts";
+import { NotificationRepository } from "../repositories/notification.repository.ts";
+import { DailyCloseService } from "../services/daily-close.service.ts";
 import { prisma } from "../lib/prisma.ts";
 import {
   ForbiddenException,
@@ -27,7 +31,7 @@ const getMyEmployee = async (req: Request) => {
   const emp = await prisma.employee.findFirst({
     where: { userId: req.auth!.userId },
   });
-  if (!emp) throw new NotFoundException("Employee not found");
+  if (!emp) throw new NotFoundException("Empleado no encontrado");
   return emp;
 };
 
@@ -47,7 +51,7 @@ router.get(
         },
       },
     });
-    if (!emp) throw new NotFoundException("Employee not found");
+    if (!emp) throw new NotFoundException("Empleado no encontrado");
     res.json({
       ...emp,
       services: emp.services.map((s) => ({
@@ -78,6 +82,12 @@ router.get(
 
 const updateStatusSchema = z.object({
   state: z.enum(["SCHEDULED", "FINISHED", "CANCELLED"]),
+  // Precio real cobrado al cerrar una cita de precio variable (opcional).
+  finalPrice: z
+    .union([z.string(), z.number()])
+    .transform((v) => String(v))
+    .nullable()
+    .optional(),
 });
 
 // An employee has full control over the status of their own appointments:
@@ -88,14 +98,80 @@ router.patch(
   asyncHandler(async (req, res) => {
     const emp = await getMyEmployee(req);
     const appointment = await AppointmentRepository.byId(String(req.params.id));
-    if (!appointment) throw new NotFoundException("Appointment not found");
+    if (!appointment) throw new NotFoundException("Cita no encontrada");
     if (appointment.employeeId !== emp.id) {
-      throw new ForbiddenException("This appointment is not yours");
+      throw new ForbiddenException("Esta cita no es tuya");
     }
     const updated = await AppointmentRepository.update(appointment.id, {
       state: req.body.state,
+      ...(req.body.finalPrice !== undefined
+        ? { finalPrice: req.body.finalPrice }
+        : {}),
     });
     res.json({ message: "Appointment updated", data: updated });
+  }),
+);
+
+// ---- Agenda de todo el equipo (solo lectura) -------------------------------
+
+// Cualquier empleado puede ver la agenda de todos (coordinación). Las
+// mutaciones siguen restringidas al dueño de la cita en el endpoint /status.
+router.get(
+  "/agenda",
+  asyncHandler(async (req, res) => {
+    await getMyEmployee(req);
+    const filters: { from?: Date; to?: Date } = {};
+    if (req.query.from) filters.from = new Date(String(req.query.from));
+    if (req.query.to) filters.to = new Date(String(req.query.to));
+    res.json(await AppointmentRepository.all(filters));
+  }),
+);
+
+// ---- Cierre diario del propio empleado -------------------------------------
+
+router.get(
+  "/me/daily-close",
+  asyncHandler(async (req, res) => {
+    const emp = await getMyEmployee(req);
+    const date = String(
+      req.query.date ?? new Date().toISOString().slice(0, 10),
+    );
+    res.json(await DailyCloseService.compute(emp.id, date));
+  }),
+);
+
+// ---- Notificaciones in-app (campana) ---------------------------------------
+
+router.get(
+  "/me/notifications",
+  asyncHandler(async (req, res) => {
+    const emp = await getMyEmployee(req);
+    res.json({
+      items: await NotificationService.list(emp.id),
+      unread: await NotificationService.unreadCount(emp.id),
+    });
+  }),
+);
+
+router.post(
+  "/me/notifications/read-all",
+  asyncHandler(async (req, res) => {
+    const emp = await getMyEmployee(req);
+    await NotificationService.markAllRead(emp.id);
+    res.json({ message: "ok" });
+  }),
+);
+
+router.patch(
+  "/me/notifications/:id/read",
+  asyncHandler(async (req, res) => {
+    const emp = await getMyEmployee(req);
+    const n = await NotificationRepository.byId(String(req.params.id));
+    if (!n) throw new NotFoundException("Notificación no encontrada");
+    if (n.employeeId !== emp.id) {
+      throw new ForbiddenException("Esta notificación no es tuya");
+    }
+    res.json(await NotificationService.markRead(n.id));
   }),
 );
 
@@ -124,9 +200,9 @@ router.delete(
   asyncHandler(async (req, res) => {
     const emp = await getMyEmployee(req);
     const block = await EmployeeBlocksRepository.byId(String(req.params.blockId));
-    if (!block) throw new NotFoundException("Block not found");
+    if (!block) throw new NotFoundException("Bloqueo no encontrado");
     if (block.employeeId !== emp.id) {
-      throw new ForbiddenException("This block is not yours");
+      throw new ForbiddenException("Este bloqueo no es tuyo");
     }
     await EmployeeBlocksRepository.delete(block.id);
     res.json({ message: "Block deleted", id: block.id });
@@ -134,6 +210,16 @@ router.delete(
 );
 
 // ---- Sales (self-service POS) ---------------------------------------------
+
+// Catálogo de productos para que el empleado pueda vender desde el portal.
+// Los productos no son sensibles ni específicos del empleado, pero solo se
+// exponen a empleados autenticados (el catálogo completo de admin sigue en /products).
+router.get(
+  "/products",
+  asyncHandler(async (_req, res) => {
+    res.json(await ProductRepository.all());
+  }),
+);
 
 router.get(
   "/me/sales",

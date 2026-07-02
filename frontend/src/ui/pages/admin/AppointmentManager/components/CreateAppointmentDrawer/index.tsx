@@ -5,11 +5,13 @@ import {
   appointmentsApi,
   employeesApi,
   servicesApi,
+  servicePackagesApi,
 } from "@/core/api";
 import type {
   AvailabilitySlot,
   Employee,
   Service,
+  ServicePackage,
 } from "@/core/types";
 import { useNotify } from "@/ui/hooks/useNotify";
 
@@ -34,20 +36,24 @@ const formatTime = (iso: string) => {
 interface CustomerForm {
   fullName: string;
   phone: string;
-  identification: string;
+  email: string;
+  birthDate: string;
 }
 
 const emptyCustomer: CustomerForm = {
   fullName: "",
   phone: "",
-  identification: "",
+  email: "",
+  birthDate: "",
 };
 
 export function CreateAppointmentDrawer({ isOpen, onClose, reload }: Props) {
   const notify = useNotify();
   const [services, setServices] = useState<Service[]>([]);
+  const [packages, setPackages] = useState<ServicePackage[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [serviceId, setServiceId] = useState("");
+  const [serviceIds, setServiceIds] = useState<string[]>([]);
+  const [packageId, setPackageId] = useState("");
   const [employeeId, setEmployeeId] = useState("");
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
@@ -55,29 +61,38 @@ export function CreateAppointmentDrawer({ isOpen, onClose, reload }: Props) {
     null,
   );
   const [customer, setCustomer] = useState<CustomerForm>(emptyCustomer);
+  const [notes, setNotes] = useState("");
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
-    setServiceId("");
+    setServiceIds([]);
+    setPackageId("");
     setEmployeeId("");
     setDate(new Date());
     setSlots([]);
     setSelectedSlot(null);
     setCustomer(emptyCustomer);
-    Promise.all([servicesApi.list(), employeesApi.list()]).then(
-      ([s, e]) => {
-        setServices(s);
-        setEmployees(e.filter((x) => x.state));
-      },
-    );
+    setNotes("");
+    Promise.all([
+      servicesApi.list(),
+      employeesApi.list(),
+      servicePackagesApi.list(),
+    ]).then(([s, e, p]) => {
+      setServices(s);
+      setEmployees(e.filter((x) => x.state));
+      setPackages(p);
+    });
   }, [isOpen]);
 
   const dateYmd = useMemo(() => (date ? toYmd(date) : null), [date]);
 
+  // Una cita puede ser un combo (packageId) o uno/varios servicios sueltos.
+  const hasSelection = Boolean(packageId) || serviceIds.length > 0;
+
   useEffect(() => {
-    if (!serviceId || !employeeId || !dateYmd) {
+    if (!hasSelection || !employeeId || !dateYmd) {
       setSlots([]);
       setSelectedSlot(null);
       return;
@@ -85,29 +100,40 @@ export function CreateAppointmentDrawer({ isOpen, onClose, reload }: Props) {
     setLoadingSlots(true);
     setSelectedSlot(null);
     appointmentsApi
-      .availability({ serviceId, employeeId, date: dateYmd })
+      .availability({
+        employeeId,
+        date: dateYmd,
+        ...(packageId
+          ? { packageId }
+          : { serviceIds: serviceIds.join(",") }),
+      })
       .then((res) => setSlots(res.slots))
       .catch(() => setSlots([]))
       .finally(() => setLoadingSlots(false));
-  }, [serviceId, employeeId, dateYmd]);
+  }, [packageId, serviceIds, employeeId, dateYmd, hasSelection]);
+
+  const toggleService = (id: string) =>
+    setServiceIds((cur) =>
+      cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id],
+    );
 
   const customerComplete =
     customer.fullName.trim().length >= 2 &&
-    customer.phone.trim().length >= 7 &&
-    customer.identification.trim().length >= 5;
+    customer.phone.trim().length >= 7;
 
   const canSubmit =
-    serviceId && employeeId && selectedSlot && customerComplete && !submitting;
+    hasSelection && employeeId && selectedSlot && customerComplete && !submitting;
 
   const handleSubmit = async () => {
     if (!canSubmit || !selectedSlot) return;
     setSubmitting(true);
     try {
       await appointmentsApi.adminBook({
-        serviceId,
+        ...(packageId ? { packageId } : { serviceIds }),
         employeeId,
         scheduledAt: selectedSlot.start,
         customer,
+        ...(notes.trim() ? { notes: notes.trim() } : {}),
       });
       notify.setMessage({ label: "Cita creada exitosamente", type: "success" });
       notify.notify();
@@ -149,21 +175,56 @@ export function CreateAppointmentDrawer({ isOpen, onClose, reload }: Props) {
           </div>
 
           <div className="p-6 flex-1 overflow-y-auto space-y-4">
-            <fieldset>
-              <legend className="font-semibold mb-1">Servicio</legend>
-              <select
-                className="select select-bordered w-full"
-                value={serviceId}
-                onChange={(e) => setServiceId(e.target.value)}
-              >
-                <option value="">— elige un servicio —</option>
-                {services.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} ({s.duration} min — ${s.price}){!s.state ? " · inactivo" : ""}
-                  </option>
-                ))}
-              </select>
-            </fieldset>
+            {packages.length > 0 && (
+              <fieldset>
+                <legend className="font-semibold mb-1">Combo (opcional)</legend>
+                <select
+                  className="select select-bordered w-full"
+                  value={packageId}
+                  onChange={(e) => {
+                    setPackageId(e.target.value);
+                    if (e.target.value) setServiceIds([]);
+                  }}
+                >
+                  <option value="">— sin combo —</option>
+                  {packages.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} (${p.price})
+                    </option>
+                  ))}
+                </select>
+              </fieldset>
+            )}
+
+            {!packageId && (
+              <fieldset>
+                <legend className="font-semibold mb-1">
+                  Servicio(s){" "}
+                  <span className="text-xs font-normal opacity-60">
+                    (puedes elegir varios)
+                  </span>
+                </legend>
+                <div className="flex flex-col gap-1 max-h-52 overflow-y-auto pr-1">
+                  {services.map((s) => (
+                    <label key={s.id} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        className="checkbox checkbox-sm checkbox-primary"
+                        checked={serviceIds.includes(s.id)}
+                        onChange={() => toggleService(s.id)}
+                      />
+                      <span className="flex-1">
+                        {s.name}
+                        {!s.state ? " · inactivo" : ""}
+                      </span>
+                      <span className="opacity-50 text-xs">
+                        {s.duration} min · ${s.price}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            )}
 
             <fieldset>
               <legend className="font-semibold mb-1">Profesional</legend>
@@ -181,7 +242,7 @@ export function CreateAppointmentDrawer({ isOpen, onClose, reload }: Props) {
               </select>
             </fieldset>
 
-            {serviceId && employeeId && (
+            {hasSelection && employeeId && (
               <fieldset>
                 <legend className="font-semibold mb-1">Día</legend>
                 <DayPicker
@@ -194,7 +255,7 @@ export function CreateAppointmentDrawer({ isOpen, onClose, reload }: Props) {
               </fieldset>
             )}
 
-            {serviceId && employeeId && date && (
+            {hasSelection && employeeId && date && (
               <fieldset>
                 <legend className="font-semibold mb-1">Hora</legend>
                 {loadingSlots ? (
@@ -258,19 +319,44 @@ export function CreateAppointmentDrawer({ isOpen, onClose, reload }: Props) {
 
                 <fieldset>
                   <legend className="font-medium text-sm mb-1">
-                    Cédula / identificación
+                    Correo (opcional)
                   </legend>
                   <input
-                    type="text"
+                    type="email"
                     className="input input-bordered w-full"
-                    placeholder="Ej: 1234567890"
-                    value={customer.identification}
+                    placeholder="Ej: juan@correo.com"
+                    value={customer.email}
                     onChange={(e) =>
-                      setCustomer({
-                        ...customer,
-                        identification: e.target.value,
-                      })
+                      setCustomer({ ...customer, email: e.target.value })
                     }
+                  />
+                </fieldset>
+
+                <fieldset>
+                  <legend className="font-medium text-sm mb-1">
+                    Fecha de nacimiento (opcional)
+                  </legend>
+                  <input
+                    type="date"
+                    className="input input-bordered w-full"
+                    value={customer.birthDate}
+                    onChange={(e) =>
+                      setCustomer({ ...customer, birthDate: e.target.value })
+                    }
+                  />
+                </fieldset>
+
+                <fieldset>
+                  <legend className="font-medium text-sm mb-1">
+                    Observación (interna)
+                  </legend>
+                  <textarea
+                    className="textarea textarea-bordered w-full"
+                    placeholder="Notas para el equipo (opcional)"
+                    rows={2}
+                    maxLength={500}
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
                   />
                 </fieldset>
               </>

@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { settingsApi } from "@/core/api";
-import { applyPrimaryColor } from "@/core/branding/branding";
+import {
+  applyPrimaryColor,
+  applySecondaryColor,
+  applyAccentColor,
+  applyFonts,
+} from "@/core/branding/branding";
 import type { BusinessSettings } from "@/core/types";
 import { BrandingContext, type BrandingContextValue } from "./context";
 
@@ -12,6 +17,9 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
       const s = await settingsApi.get();
       setBusiness(s);
       applyPrimaryColor(s.primaryColor);
+      applySecondaryColor(s.secondaryColor);
+      applyAccentColor(s.accentColor);
+      applyFonts(s.fontHeading, s.fontBody);
     } catch {
       /* keep DaisyUI defaults if branding can't load */
     }

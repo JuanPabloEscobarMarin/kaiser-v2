@@ -10,7 +10,7 @@ export const ServiceService = {
 
   async getById(id: string) {
     const service = await ServiceRepository.byId(id);
-    if (!service) throw new NotFoundException("Service not found");
+    if (!service) throw new NotFoundException("Servicio no encontrado");
     return service;
   },
 

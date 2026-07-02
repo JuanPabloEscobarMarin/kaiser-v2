@@ -37,7 +37,7 @@ export function CreateSaleDrawer({
   const [employeeId, setEmployeeId] = useState(""); // "" = Administrador (sin comisión)
   const [custName, setCustName] = useState("");
   const [custPhone, setCustPhone] = useState("");
-  const [custId, setCustId] = useState("");
+  const [custEmail, setCustEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const productMap = useMemo(
@@ -58,7 +58,7 @@ export function CreateSaleDrawer({
       setEmployeeId("");
       setCustName("");
       setCustPhone("");
-      setCustId("");
+      setCustEmail("");
     }
   }, [isOpen]);
 
@@ -108,11 +108,10 @@ export function CreateSaleDrawer({
   }, [lines, productMap, hasSeller]);
 
   const anyCustomerField =
-    custName.trim() || custPhone.trim() || custId.trim();
+    custName.trim() || custPhone.trim() || custEmail.trim();
   const customerComplete =
     custName.trim().length >= 2 &&
-    custPhone.trim().length >= 7 &&
-    custId.trim().length >= 5;
+    custPhone.trim().length >= 7;
 
   const submit = async () => {
     if (lines.length === 0) {
@@ -137,7 +136,7 @@ export function CreateSaleDrawer({
         payload.customer = {
           fullName: custName.trim(),
           phone: custPhone.trim(),
-          identification: custId.trim(),
+          ...(custEmail.trim() ? { email: custEmail.trim() } : {}),
         };
       }
       if (isAdmin) payload.employeeId = employeeId || null;
@@ -284,11 +283,11 @@ export function CreateSaleDrawer({
                   onChange={(e) => setCustPhone(e.target.value)}
                 />
                 <input
-                  type="text"
+                  type="email"
                   className="input input-bordered"
-                  placeholder="Cédula"
-                  value={custId}
-                  onChange={(e) => setCustId(e.target.value)}
+                  placeholder="Correo (opcional)"
+                  value={custEmail}
+                  onChange={(e) => setCustEmail(e.target.value)}
                 />
               </div>
             </div>

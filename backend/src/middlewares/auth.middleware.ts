@@ -13,11 +13,11 @@ declare global {
 /** Verifica la cookie y devuelve el payload, o lanza 401. */
 const authenticate = async (req: Request): Promise<JwtPayload> => {
   const token = req.cookies?.jwt_token;
-  if (!token) throw new HttpException("Unauthorized", 401);
+  if (!token) throw new HttpException("No autorizado", 401);
   try {
     return await verifyToken(token);
   } catch {
-    throw new HttpException("Unauthorized", 401);
+    throw new HttpException("No autorizado", 401);
   }
 };
 

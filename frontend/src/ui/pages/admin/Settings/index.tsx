@@ -2,10 +2,17 @@ import { useEffect, useState, type FormEvent } from "react";
 import { ApiError, resourcesApi, settingsApi } from "@/core/api";
 import type { BusinessSettingsInput, HomeContent } from "@/core/types";
 import { useNotify } from "@/ui/hooks/useNotify";
-import { applyPrimaryColor } from "@/core/branding/branding";
+import {
+  applyPrimaryColor,
+  applySecondaryColor,
+  applyAccentColor,
+  applyFonts,
+  AVAILABLE_FONTS,
+} from "@/core/branding/branding";
 import { HOME_CONTENT_DEFAULTS } from "@/core/branding/home-content";
 import { useBranding } from "@/ui/contexts/branding/context";
 import { HomeContentSection } from "./HomeContentSection";
+import { GallerySection } from "./GallerySection";
 import heroDefault from "@/assets/hero-barbershop.jpg";
 
 const DEFAULT_PRIMARY = "#570df8";
@@ -326,6 +333,110 @@ export function BusinessSettingsPage() {
                 ))}
               </div>
             </fieldset>
+
+            {/* Colores secundario y de acento */}
+            <div className="grid sm:grid-cols-2 gap-4 mt-4">
+              <fieldset>
+                <legend className="text-sm font-medium mb-1">
+                  Color secundario
+                </legend>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    className="h-10 w-14 rounded cursor-pointer border border-base-300 bg-base-100"
+                    value={form.secondaryColor ?? "#0ea5e9"}
+                    onChange={(e) => {
+                      setForm((f) => ({ ...f, secondaryColor: e.target.value }));
+                      applySecondaryColor(e.target.value);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-xs btn-ghost"
+                    onClick={() => {
+                      setForm((f) => ({ ...f, secondaryColor: null }));
+                      applySecondaryColor(null);
+                    }}
+                  >
+                    Quitar
+                  </button>
+                  <span className="badge badge-secondary">badge</span>
+                </div>
+              </fieldset>
+              <fieldset>
+                <legend className="text-sm font-medium mb-1">
+                  Color de acento
+                </legend>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    className="h-10 w-14 rounded cursor-pointer border border-base-300 bg-base-100"
+                    value={form.accentColor ?? "#f59e0b"}
+                    onChange={(e) => {
+                      setForm((f) => ({ ...f, accentColor: e.target.value }));
+                      applyAccentColor(e.target.value);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-xs btn-ghost"
+                    onClick={() => {
+                      setForm((f) => ({ ...f, accentColor: null }));
+                      applyAccentColor(null);
+                    }}
+                  >
+                    Quitar
+                  </button>
+                  <span className="badge badge-accent">badge</span>
+                </div>
+              </fieldset>
+            </div>
+
+            {/* Tipografías */}
+            <div className="grid sm:grid-cols-2 gap-4 mt-4">
+              <fieldset>
+                <legend className="text-sm font-medium mb-1">
+                  Fuente de títulos
+                </legend>
+                <select
+                  className="select select-bordered w-full"
+                  value={form.fontHeading ?? ""}
+                  onChange={(e) => {
+                    const v = e.target.value || null;
+                    setForm((f) => ({ ...f, fontHeading: v }));
+                    applyFonts(v, form.fontBody);
+                  }}
+                >
+                  <option value="">Por defecto</option>
+                  {AVAILABLE_FONTS.map((f) => (
+                    <option key={f} value={f}>
+                      {f}
+                    </option>
+                  ))}
+                </select>
+              </fieldset>
+              <fieldset>
+                <legend className="text-sm font-medium mb-1">
+                  Fuente del texto
+                </legend>
+                <select
+                  className="select select-bordered w-full"
+                  value={form.fontBody ?? ""}
+                  onChange={(e) => {
+                    const v = e.target.value || null;
+                    setForm((f) => ({ ...f, fontBody: v }));
+                    applyFonts(form.fontHeading, v);
+                  }}
+                >
+                  <option value="">Por defecto</option>
+                  {AVAILABLE_FONTS.map((f) => (
+                    <option key={f} value={f}>
+                      {f}
+                    </option>
+                  ))}
+                </select>
+              </fieldset>
+            </div>
           </div>
         </section>
 
@@ -374,6 +485,31 @@ export function BusinessSettingsPage() {
                   required
                 />
               </fieldset>
+            </div>
+
+            <div className="divider text-sm">Redes sociales (opcional)</div>
+            <div className="grid sm:grid-cols-2 gap-3">
+              {(
+                [
+                  { key: "instagramUrl", label: "Instagram", ph: "https://instagram.com/tu_barberia" },
+                  { key: "facebookUrl", label: "Facebook", ph: "https://facebook.com/tu_barberia" },
+                  { key: "tiktokUrl", label: "TikTok", ph: "https://tiktok.com/@tu_barberia" },
+                  { key: "youtubeUrl", label: "YouTube", ph: "https://youtube.com/@tu_barberia" },
+                ] as const
+              ).map(({ key, label, ph }) => (
+                <fieldset key={key}>
+                  <legend className="text-sm font-medium mb-1">{label}</legend>
+                  <input
+                    type="url"
+                    className="input input-bordered w-full"
+                    placeholder={ph}
+                    value={form[key] ?? ""}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, [key]: e.target.value || null }))
+                    }
+                  />
+                </fieldset>
+              ))}
             </div>
           </div>
         </section>
@@ -455,6 +591,9 @@ export function BusinessSettingsPage() {
             </div>
           </div>
         </section>
+
+        {/* Galería / portafolio */}
+        <GallerySection />
 
         {/* Contenido del home */}
         <HomeContentSection

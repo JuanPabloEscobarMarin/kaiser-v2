@@ -19,6 +19,7 @@ const NAV_ITEMS = [
   { to: "/admin/inventory", icon: "box" as const, label: "Inventario" },
   { to: "/admin/products", icon: "store" as const, label: "Productos" },
   { to: "/admin/sales", icon: "cart" as const, label: "Ventas" },
+  { to: "/admin/promotions", icon: "chart" as const, label: "Promociones" },
   { to: "/admin/settings", icon: "settings" as const, label: "Configuración" },
 ];
 

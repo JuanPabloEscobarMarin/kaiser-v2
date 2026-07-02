@@ -28,10 +28,10 @@ const publicUser = (u: {
 export const AuthService = {
   async login(data: LoginInput) {
     const user = await UserRepository.byUsername(data.username);
-    if (!user) throw new HttpException("Invalid credentials", 401);
+    if (!user) throw new HttpException("Credenciales inválidas", 401);
 
     const valid = await verifyPassword(data.password, user.password);
-    if (!valid) throw new HttpException("Invalid credentials", 401);
+    if (!valid) throw new HttpException("Credenciales inválidas", 401);
 
     const payload: JwtPayload = { userId: user.id, role: user.role };
     if (user.role === "EMPLOYEE") {
@@ -45,18 +45,18 @@ export const AuthService = {
 
   async getProfile(userId: string) {
     const user = await UserRepository.byId(userId);
-    if (!user) throw new NotFoundException("User not found");
+    if (!user) throw new NotFoundException("Usuario no encontrado");
     return publicUser(user);
   },
 
   async updateProfile(userId: string, data: UpdateProfileInput) {
     const current = await UserRepository.byId(userId);
-    if (!current) throw new NotFoundException("User not found");
+    if (!current) throw new NotFoundException("Usuario no encontrado");
 
     if (data.username && data.username !== current.username) {
       const taken = await UserRepository.byUsername(data.username);
       if (taken && taken.id !== userId) {
-        throw new ConflictException("Username already taken");
+        throw new ConflictException("El nombre de usuario ya está en uso");
       }
     }
 
@@ -70,7 +70,7 @@ export const AuthService = {
 
   async changePassword(userId: string, data: ChangePasswordInput) {
     const user = await UserRepository.byIdWithPassword(userId);
-    if (!user) throw new NotFoundException("User not found");
+    if (!user) throw new NotFoundException("Usuario no encontrado");
 
     const valid = await verifyPassword(data.currentPassword, user.password);
     if (!valid) throw new HttpException("Current password is incorrect", 401);

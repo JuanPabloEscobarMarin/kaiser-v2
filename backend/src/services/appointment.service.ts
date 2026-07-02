@@ -4,9 +4,11 @@ import {
   type UpdateAppointmentData,
 } from "../repositories/appointment.repository.ts";
 import { ServiceService } from "./service.service.ts";
+import { ServicePackageService } from "./service-package.service.ts";
 import { EmployeeService } from "./employee.service.ts";
 import { CustomerService } from "./customer.service.ts";
 import { SettingsService } from "./settings.service.ts";
+import { NotificationService } from "./notification.service.ts";
 import { EmployeeBlocksRepository } from "../repositories/employee-blocks.repository.ts";
 import {
   resolveDaySchedule,
@@ -58,7 +60,7 @@ export const AppointmentService = {
 
   async getById(id: string) {
     const appointment = await AppointmentRepository.byId(id);
-    if (!appointment) throw new NotFoundException("Appointment not found");
+    if (!appointment) throw new NotFoundException("Cita no encontrada");
     return appointment;
   },
 
@@ -70,25 +72,81 @@ export const AppointmentService = {
    * given day (UTC). Respects business opening hours, existing appointments,
    * and the employee's schedule blocks.
    */
+  /**
+   * Resuelve la lista de servicios de una cita a partir de un servicio suelto,
+   * varios servicios o un combo/paquete. Devuelve los servicios cargados, sus
+   * ids, la duración total y (si aplica) el id del combo.
+   */
+  async resolveServices(
+    input: {
+      serviceId?: string | undefined;
+      serviceIds?: string[] | undefined;
+      packageId?: string | undefined;
+    },
+    options: { adminOverride: boolean },
+  ) {
+    let serviceIds: string[];
+    let packageId: string | null = null;
+    // Un combo tiene precio propio; se registra como finalPrice de la cita para
+    // que los reportes cobren el combo (no la suma de servicios).
+    let packagePrice: string | null = null;
+
+    if (input.packageId) {
+      const pkg = await ServicePackageService.getById(input.packageId);
+      if (!options.adminOverride && !pkg.state) {
+        throw new BadRequestException("El combo no está disponible");
+      }
+      serviceIds = pkg.items.map((i) => i.serviceId);
+      packageId = pkg.id;
+      packagePrice = String(pkg.price);
+    } else if (input.serviceIds && input.serviceIds.length) {
+      serviceIds = input.serviceIds;
+    } else if (input.serviceId) {
+      serviceIds = [input.serviceId];
+    } else {
+      throw new BadRequestException("Debes indicar al menos un servicio o un combo");
+    }
+
+    if (serviceIds.length === 0) {
+      throw new BadRequestException("El combo no tiene servicios");
+    }
+
+    const services = await Promise.all(
+      serviceIds.map((id) => ServiceService.getById(id)),
+    );
+    const totalDuration = services.reduce((sum, s) => sum + s.duration, 0);
+    return { serviceIds, packageId, packagePrice, services, totalDuration };
+  },
+
   async availability(input: {
     employeeId: string;
-    serviceId: string;
+    serviceId?: string;
+    serviceIds?: string;
+    packageId?: string;
     date: string;
   }) {
-    const [service, employee] = await Promise.all([
-      ServiceService.getById(input.serviceId),
-      EmployeeService.getById(input.employeeId),
-    ]);
-
+    const employee = await EmployeeService.getById(input.employeeId);
     if (!employee.state) {
-      throw new BadRequestException("Employee is not active");
+      throw new BadRequestException("El empleado no está activo");
     }
+
+    const parsedIds = input.serviceIds
+      ? input.serviceIds.split(",").map((s) => s.trim()).filter(Boolean)
+      : undefined;
+    const { services, totalDuration } = await this.resolveServices(
+      {
+        ...(input.packageId ? { packageId: input.packageId } : {}),
+        ...(parsedIds && parsedIds.length ? { serviceIds: parsedIds } : {}),
+        ...(input.serviceId ? { serviceId: input.serviceId } : {}),
+      },
+      { adminOverride: false },
+    );
 
     const summary = {
       service: {
-        id: service.id,
-        name: service.name,
-        duration: service.duration,
+        id: services[0]!.id,
+        name: services.map((s) => s.name).join(" + "),
+        duration: totalDuration,
       },
       employee: { id: employee.id, fullName: employee.fullName },
       date: input.date,
@@ -110,13 +168,13 @@ export const AppointmentService = {
     const slots: { start: string; end: string }[] = [];
 
     // Walk every candidate start time within opening hours that leaves room for
-    // the full service duration before closing.
+    // the full (combined) service duration before closing.
     for (
       let startMin = schedule.openMinutes;
-      startMin + service.duration <= schedule.closeMinutes;
+      startMin + totalDuration <= schedule.closeMinutes;
       startMin += SLOT_MINUTES
     ) {
-      const endMin = startMin + service.duration;
+      const endMin = startMin + totalDuration;
       const slotStart = dateAtMinutes(input.date, startMin);
       const slotEnd = dateAtMinutes(input.date, endMin);
 
@@ -153,23 +211,23 @@ export const AppointmentService = {
     data: BookAppointmentInput,
     options: { adminOverride: boolean },
   ) {
-    const [service, employee] = await Promise.all([
-      ServiceService.getById(data.serviceId),
-      EmployeeService.getById(data.employeeId),
-    ]);
-
-    if (!options.adminOverride && !service.state) {
-      throw new BadRequestException("Service is not active");
-    }
+    const employee = await EmployeeService.getById(data.employeeId);
     if (!employee.state) {
-      throw new BadRequestException("Employee is not active");
+      throw new BadRequestException("El empleado no está activo");
+    }
+
+    const { serviceIds, packageId, packagePrice, services, totalDuration } =
+      await this.resolveServices(data, options);
+
+    if (!options.adminOverride && services.some((s) => !s.state)) {
+      throw new BadRequestException("El servicio no está activo");
     }
 
     const start = new Date(data.scheduledAt);
     if (start.getTime() < Date.now()) {
-      throw new BadRequestException("Cannot schedule in the past");
+      throw new BadRequestException("No se puede agendar en el pasado");
     }
-    const end = computeEndsAt(start, service.duration);
+    const end = computeEndsAt(start, totalDuration);
 
     // Clients must stay within opening hours and outside the employee's blocks.
     // Admins bypass this (the create-appointment UI already restricts them to
@@ -185,19 +243,32 @@ export const AppointmentService = {
     );
     if (conflict) {
       throw new ConflictException(
-        "Employee already has an appointment in this time range",
+        "El empleado ya tiene una cita en este horario",
       );
     }
 
     const customer = await CustomerService.upsert(data.customer);
 
-    return AppointmentRepository.createWithBooking({
-      serviceId: data.serviceId,
+    const appointment = await AppointmentRepository.createWithBooking({
+      serviceId: serviceIds[0]!,
+      serviceIds,
+      packageId,
       employeeId: data.employeeId,
       scheduledAt: start,
       endsAt: end,
       customerId: customer.id,
+      ...(packagePrice !== null ? { finalPrice: packagePrice } : {}),
+      ...(data.notes !== undefined ? { notes: data.notes } : {}),
     });
+
+    // Alerta in-app al empleado (fire-and-forget: no bloquea la reserva).
+    void NotificationService.notifyEmployee(
+      data.employeeId,
+      "Nueva cita agendada",
+      `${customer.fullName} · ${services.map((s) => s.name).join(" + ")} · ${start.toISOString().slice(0, 16).replace("T", " ")}`,
+    ).catch(() => {});
+
+    return appointment;
   },
 
   /**
@@ -214,13 +285,13 @@ export const AppointmentService = {
 
     const schedule = resolveDaySchedule(hours, dateYmd);
     if (schedule.closed) {
-      throw new BadRequestException("The business is closed on this day");
+      throw new BadRequestException("El negocio está cerrado este día");
     }
 
     const startMin = minutesOfDayUtc(start);
     const endMin = startMin + (end.getTime() - start.getTime()) / 60_000;
     if (startMin < schedule.openMinutes || endMin > schedule.closeMinutes) {
-      throw new BadRequestException("Selected time is outside business hours");
+      throw new BadRequestException("La hora seleccionada está fuera del horario de atención");
     }
     // La hora debe caer exactamente en la grilla de slots ofrecida (cada
     // SLOT_MINUTES desde la apertura). Sin esto, un request manual a las
@@ -231,12 +302,12 @@ export const AppointmentService = {
       (startMin - schedule.openMinutes) % SLOT_MINUTES !== 0
     ) {
       throw new BadRequestException(
-        "Selected time is not an offered slot",
+        "La hora seleccionada no es un horario disponible",
       );
     }
     if (isBlocked(blocks, startMin, endMin)) {
       throw new BadRequestException(
-        "Selected time is blocked for this employee",
+        "La hora seleccionada está bloqueada para este empleado",
       );
     }
   },
@@ -280,7 +351,7 @@ export const AppointmentService = {
         id,
       );
       if (conflict)
-        throw new ConflictException("Time conflict with another appointment");
+        throw new ConflictException("La hora choca con otra cita");
     }
 
     const update: UpdateAppointmentData = {
@@ -290,6 +361,8 @@ export const AppointmentService = {
       endsAt,
     };
     if (data.state !== undefined) update.state = data.state;
+    if (data.finalPrice !== undefined) update.finalPrice = data.finalPrice;
+    if (data.notes !== undefined) update.notes = data.notes;
     return AppointmentRepository.update(id, update);
   },
 

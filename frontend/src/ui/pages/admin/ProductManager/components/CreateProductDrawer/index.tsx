@@ -2,6 +2,7 @@ import { useState, useEffect, type FormEvent } from "react";
 import { ApiError, resourcesApi, productsApi } from "@/core/api";
 import type { Product, ProductInput } from "@/core/api/products.api";
 import { useNotify } from "@/ui/hooks/useNotify";
+import { formatPrice } from "@/lib/format";
 
 interface Props {
   reload?: () => void;
@@ -21,6 +22,8 @@ export function CreateProductDrawer({
   const { setMessage, notify } = useNotify();
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
+  const [realCost, setRealCost] = useState("0");
+  const [saleCost, setSaleCost] = useState("0");
   const [stock, setStock] = useState(0);
   const [commission, setCommission] = useState("0");
   const [description, setDescription] = useState("");
@@ -34,6 +37,8 @@ export function CreateProductDrawer({
     if (product) {
       setName(product.name);
       setPrice(product.price.toString());
+      setRealCost(product.realCost?.toString() ?? "0");
+      setSaleCost(product.saleCost?.toString() ?? "0");
       setStock(product.stock);
       setCommission(product.commission?.toString() ?? "0");
       setDescription(product.description ?? "");
@@ -42,6 +47,8 @@ export function CreateProductDrawer({
     } else {
       setName("");
       setPrice("");
+      setRealCost("0");
+      setSaleCost("0");
       setStock(0);
       setCommission("0");
       setDescription("");
@@ -70,6 +77,8 @@ export function CreateProductDrawer({
       const payload: ProductInput = {
         name,
         price,
+        realCost,
+        saleCost,
         stock,
         commission,
         description,
@@ -102,6 +111,12 @@ export function CreateProductDrawer({
 
   const currentImageUrl =
     imagePreview ?? (currentSlug ? resourcesApi.imageUrl(currentSlug) : null);
+
+  // Rentabilidad: utilidad = precio de venta − costo de venta.
+  const priceNum = Number(price) || 0;
+  const saleCostNum = Number(saleCost) || 0;
+  const profit = priceNum - saleCostNum;
+  const margin = priceNum > 0 ? (profit / priceNum) * 100 : 0;
 
   return (
     <div className="drawer drawer-end absolute z-50">
@@ -171,6 +186,50 @@ export function CreateProductDrawer({
                     readOnly={readOnly}
                   />
                 </fieldset>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <fieldset>
+                  <legend className="font-semibold mb-1">Costo real</legend>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="input w-full input-bordered"
+                    value={realCost}
+                    onChange={(e) => setRealCost(e.target.value)}
+                    readOnly={readOnly}
+                  />
+                  <small className="text-xs opacity-60">
+                    Lo que te cuesta comprarlo.
+                  </small>
+                </fieldset>
+                <fieldset>
+                  <legend className="font-semibold mb-1">Costo de venta</legend>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="input w-full input-bordered"
+                    value={saleCost}
+                    onChange={(e) => setSaleCost(e.target.value)}
+                    readOnly={readOnly}
+                  />
+                  <small className="text-xs opacity-60">
+                    Compra + gastos asociados.
+                  </small>
+                </fieldset>
+              </div>
+
+              <div className="rounded-lg bg-base-200 p-3 text-sm flex items-center justify-between">
+                <span className="opacity-70">
+                  Utilidad (precio − costo de venta)
+                </span>
+                <span
+                  className={`font-bold ${profit >= 0 ? "text-success" : "text-error"}`}
+                >
+                  {formatPrice(String(profit))} · {margin.toFixed(0)}%
+                </span>
               </div>
 
               <fieldset>

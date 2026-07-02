@@ -45,3 +45,70 @@ export const resetPrimaryColor = (): void => {
   root.style.removeProperty("--color-primary");
   root.style.removeProperty("--color-primary-content");
 };
+
+/** Aplica (o limpia) un color DaisyUI arbitrario por su nombre (secondary/accent). */
+const applyThemeColor = (name: string, hex?: string | null): void => {
+  const root = document.documentElement;
+  if (hex && isValidHex(hex)) {
+    root.style.setProperty(`--color-${name}`, hex);
+    root.style.setProperty(`--color-${name}-content`, contrastingTextFor(hex));
+  } else {
+    root.style.removeProperty(`--color-${name}`);
+    root.style.removeProperty(`--color-${name}-content`);
+  }
+};
+
+export const applySecondaryColor = (hex?: string | null): void =>
+  applyThemeColor("secondary", hex);
+
+export const applyAccentColor = (hex?: string | null): void =>
+  applyThemeColor("accent", hex);
+
+// ---- Tipografías (Google Fonts) -------------------------------------------
+
+/** Set curado de fuentes: nombre visible → especificación para Google Fonts. */
+const GOOGLE_FONTS: Record<string, string> = {
+  Inter: "Inter:wght@400;500;600;700",
+  Poppins: "Poppins:wght@400;500;600;700",
+  Montserrat: "Montserrat:wght@400;500;600;700",
+  Roboto: "Roboto:wght@400;500;700",
+  Lato: "Lato:wght@400;700",
+  "Playfair Display": "Playfair+Display:wght@400;600;700",
+  Merriweather: "Merriweather:wght@400;700",
+  Oswald: "Oswald:wght@400;500;700",
+  Raleway: "Raleway:wght@400;500;600;700",
+  Nunito: "Nunito:wght@400;600;700",
+};
+
+export const AVAILABLE_FONTS = Object.keys(GOOGLE_FONTS);
+
+const loadGoogleFont = (family: string): void => {
+  const spec = GOOGLE_FONTS[family];
+  if (!spec) return;
+  const id = `gf-${family.replace(/\s+/g, "-")}`;
+  if (document.getElementById(id)) return;
+  const link = document.createElement("link");
+  link.id = id;
+  link.rel = "stylesheet";
+  link.href = `https://fonts.googleapis.com/css2?family=${spec}&display=swap`;
+  document.head.appendChild(link);
+};
+
+export const applyFonts = (
+  heading?: string | null,
+  body?: string | null,
+): void => {
+  const root = document.documentElement;
+  if (heading) {
+    loadGoogleFont(heading);
+    root.style.setProperty("--font-heading", `'${heading}', sans-serif`);
+  } else {
+    root.style.removeProperty("--font-heading");
+  }
+  if (body) {
+    loadGoogleFont(body);
+    root.style.setProperty("--font-body", `'${body}', sans-serif`);
+  } else {
+    root.style.removeProperty("--font-body");
+  }
+};

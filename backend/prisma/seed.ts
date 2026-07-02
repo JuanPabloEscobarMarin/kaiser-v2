@@ -163,14 +163,14 @@ async function main() {
   console.log("  → Clientes");
   const customers = await Promise.all(
     [
-      { fullName: "Laura Gómez", phone: "3001111111", identification: "1010101010" },
-      { fullName: "Mateo Restrepo", phone: "3002222222", identification: "1020202020" },
-      { fullName: "Valeria Cardona", phone: "3003333333", identification: "1030303030" },
-      { fullName: "Santiago Mejía", phone: "3004444444", identification: "1040404040" },
-      { fullName: "Isabella Vélez", phone: "3005555555", identification: "1050505050" },
-      { fullName: "Juan David Ríos", phone: "3006666666", identification: "1060606060" },
-      { fullName: "Sara Ramírez", phone: "3007777777", identification: "1070707070" },
-      { fullName: "Tomás Arango", phone: "3008888888", identification: "1080808080" },
+      { fullName: "Laura Gómez", phone: "3001111111", email: "laura.gomez@example.com" },
+      { fullName: "Mateo Restrepo", phone: "3002222222", email: "mateo.restrepo@example.com" },
+      { fullName: "Valeria Cardona", phone: "3003333333", email: "valeria.cardona@example.com" },
+      { fullName: "Santiago Mejía", phone: "3004444444", email: "santiago.mejia@example.com" },
+      { fullName: "Isabella Vélez", phone: "3005555555", email: "isabella.velez@example.com" },
+      { fullName: "Juan David Ríos", phone: "3006666666", email: "juandavid.rios@example.com" },
+      { fullName: "Sara Ramírez", phone: "3007777777", email: "sara.ramirez@example.com" },
+      { fullName: "Tomás Arango", phone: "3008888888", email: "tomas.arango@example.com" },
     ].map((data) => prisma.customer.create({ data })),
   );
 
@@ -197,7 +197,6 @@ async function main() {
       data: {
         fullName: "Andrea Bermúdez",
         phone: "3015550001",
-        salary: "2500000",
         urlImage: "seed-emp-andrea.jpg",
         userId: andreaUser.id,
         services: {
@@ -214,7 +213,6 @@ async function main() {
       data: {
         fullName: "Bryan Acosta",
         phone: "3015550002",
-        salary: "1900000",
         urlImage: "seed-emp-bryan.jpg",
         services: {
           create: [
@@ -230,7 +228,6 @@ async function main() {
       data: {
         fullName: "Camila Ortiz",
         phone: "3015550003",
-        salary: "1800000",
         urlImage: "seed-emp-camila.jpg",
         services: {
           create: [
@@ -246,7 +243,6 @@ async function main() {
       data: {
         fullName: "Diego Salazar",
         phone: "3015550004",
-        salary: "1750000",
         urlImage: "seed-emp-diego.jpg",
         services: {
           create: [
@@ -261,7 +257,6 @@ async function main() {
       data: {
         fullName: "Valentina Ríos",
         phone: "3015550005",
-        salary: "2000000",
         urlImage: "seed-emp-valentina.jpg",
         services: {
           create: [
@@ -476,7 +471,7 @@ async function main() {
   console.log(counts);
   console.log("\nAdmin:    admin / " + adminPassword);
   console.log("Empleado: andrea / " + employeePassword + " (portal /employee)");
-  console.log("Cédula de prueba para reservar: 1010101010 (Laura Gómez)");
+  console.log("Teléfono de prueba para reservar: 3001111111 (Laura Gómez)");
 }
 
 main()

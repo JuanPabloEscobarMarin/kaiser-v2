@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { employeePortalApi } from "@/core/api";
 import type { EmployeeProfile } from "@/core/api/employee-portal.api";
 import type { Sale } from "@/core/api/sales.api";
+import type { DailyClose } from "@/core/api/reports.api";
 import type { Appointment } from "@/core/types";
 import { CountUp } from "@/ui/components/CountUp";
 import { Reveal } from "@/ui/components/Reveal";
 import { StatsSkeleton } from "@/ui/components/Skeletons";
+import { DailyCloseView } from "@/ui/components/DailyCloseView";
 import { formatCurrency } from "@/lib/format";
 
 const formatDate = (iso: string) =>
@@ -22,9 +24,11 @@ export function EmployeeDashboard() {
   const [profile, setProfile] = useState<EmployeeProfile | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
+  const [dailyClose, setDailyClose] = useState<DailyClose | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
     Promise.all([
       employeePortalApi.me(),
       employeePortalApi.myAppointments(),
@@ -36,6 +40,10 @@ export function EmployeeDashboard() {
         setSales(s);
       })
       .finally(() => setLoading(false));
+    employeePortalApi
+      .myDailyClose(today)
+      .then(setDailyClose)
+      .catch(() => setDailyClose(null));
   }, []);
 
   if (loading) {
@@ -133,6 +141,16 @@ export function EmployeeDashboard() {
           )}
         </div>
       </div>
+
+      {/* Cierre de hoy */}
+      {dailyClose && (
+        <div className="card bg-base-100 shadow">
+          <div className="card-body">
+            <h2 className="font-bold text-lg mb-2">Mi cierre de hoy</h2>
+            <DailyCloseView data={dailyClose} />
+          </div>
+        </div>
+      )}
 
       {/* Servicios y comisiones */}
       {profile?.services && profile.services.length > 0 && (

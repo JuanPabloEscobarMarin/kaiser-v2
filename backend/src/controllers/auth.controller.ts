@@ -13,7 +13,7 @@ const COOKIE_OPTS = {
 };
 
 const requireAuth = (req: Request) => {
-  if (!req.auth) throw new HttpException("Unauthorized", 401);
+  if (!req.auth) throw new HttpException("No autorizado", 401);
   return req.auth;
 };
 

@@ -23,6 +23,14 @@ export interface BusinessSettings {
   heroImageSlug?: string | null;
   logoSlug?: string | null;
   primaryColor: string;
+  secondaryColor?: string | null;
+  accentColor?: string | null;
+  fontHeading?: string | null;
+  fontBody?: string | null;
+  instagramUrl?: string | null;
+  facebookUrl?: string | null;
+  tiktokUrl?: string | null;
+  youtubeUrl?: string | null;
   homeContent: HomeContent;
   updatedAt: string;
 }
@@ -40,14 +48,24 @@ export interface Customer {
   id: string;
   fullName: string;
   phone: string;
-  identification: string;
+  email?: string | null;
+  birthDate?: string | null;
   createdAt: string;
 }
 
 export interface CustomerInput {
   fullName: string;
   phone: string;
-  identification: string;
+  email?: string | null;
+  birthDate?: string | null;
+}
+
+export interface ServiceCategory {
+  id: string;
+  name: string;
+  order: number;
+  state?: boolean;
+  createdAt?: string;
 }
 
 export interface Service {
@@ -57,6 +75,9 @@ export interface Service {
   duration: number;
   state: boolean;
   discount: string;
+  variablePrice?: boolean;
+  categoryId?: string | null;
+  category?: { id: string; name: string; order?: number } | null;
   urlImage?: string | null;
   description?: string | null;
 }
@@ -67,12 +88,28 @@ export interface EmployeeService {
   commission: string;
 }
 
+export interface ServicePackageItem {
+  serviceId: string;
+  service?: { id: string; name: string; price: string; duration: number };
+}
+
+export interface ServicePackage {
+  id: string;
+  name: string;
+  price: string;
+  description?: string | null;
+  urlImage?: string | null;
+  state: boolean;
+  items: ServicePackageItem[];
+  createdAt?: string;
+}
+
 export interface Employee {
   id: string;
   fullName: string;
   phone: string;
   state: boolean;
-  salary: string;
+  birthDate?: string | null;
   urlImage?: string | null;
   userId?: string | null;
   services?: EmployeeService[];
@@ -105,9 +142,17 @@ export interface Appointment {
   scheduledAt: string;
   endsAt: string;
   state: AppointmentState;
+  finalPrice?: string | null;
+  packageId?: string | null;
+  notes?: string | null;
   createdAt: string;
   service?: Service;
   employee?: Employee;
+  services?: {
+    serviceId: string;
+    service?: { id: string; name: string; price: string; duration: number };
+  }[];
+  package?: { id: string; name: string; price: string } | null;
   booking?: Booking | null;
 }
 

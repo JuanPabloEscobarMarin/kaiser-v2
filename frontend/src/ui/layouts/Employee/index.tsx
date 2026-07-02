@@ -1,30 +1,34 @@
-import { NavLink, Outlet, useNavigate } from "react-router";
+import { NavLink, Outlet } from "react-router";
 import { useAuth } from "@/ui/hooks/useAuth";
 import { useBranding } from "@/ui/contexts/branding/context";
 import { resourcesApi } from "@/core/api";
+import { BaseIcon } from "@/ui/components/base/BaseIcon";
+import { AvatarMenu } from "@/ui/layouts/components/avatarMenu";
+import { NotificationBell } from "./NotificationBell";
 
 const NAV_ITEMS = [
-  { to: "/employee/dashboard", label: "Dashboard" },
-  { to: "/employee/appointments", label: "Mis citas" },
-  { to: "/employee/sales", label: "Ventas" },
-  { to: "/employee/time-off", label: "Tiempo libre" },
+  { to: "/employee/dashboard", icon: "dashboard" as const, label: "Dashboard" },
+  { to: "/employee/appointments", icon: "calendar" as const, label: "Mis citas" },
+  { to: "/employee/sales", icon: "cart" as const, label: "Ventas" },
+  { to: "/employee/time-off", icon: "clock" as const, label: "Tiempo libre" },
 ];
 
 export function EmployeeLayout() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { name, business } = useBranding();
   const logoUrl = business?.logoSlug
     ? resourcesApi.imageUrl(business.logoSlug)
     : null;
-  const navigate = useNavigate();
-
-  const handleLogout = async () => {
-    await logout();
-    navigate("/login");
-  };
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     isActive ? "active" : "";
+
+  const navContent = (item: (typeof NAV_ITEMS)[number]) => (
+    <>
+      <BaseIcon icon={item.icon} size={20} color="currentColor" viewBox="0 0 24 24" />
+      {item.label}
+    </>
+  );
 
   return (
     <div className="min-h-screen bg-base-200">
@@ -45,13 +49,12 @@ export function EmployeeLayout() {
             Empleado
           </span>
         </div>
-        <div className="flex items-center gap-1 sm:gap-2">
+        <div className="flex items-center gap-2">
           <span className="text-sm opacity-70 hidden sm:inline">
             {user?.username}
           </span>
-          <button className="btn btn-ghost btn-sm" onClick={handleLogout}>
-            Salir
-          </button>
+          <NotificationBell />
+          <AvatarMenu />
         </div>
       </nav>
 
@@ -61,7 +64,7 @@ export function EmployeeLayout() {
           {NAV_ITEMS.map((item) => (
             <li key={item.to}>
               <NavLink to={item.to} className={linkClass}>
-                {item.label}
+                {navContent(item)}
               </NavLink>
             </li>
           ))}
@@ -75,7 +78,7 @@ export function EmployeeLayout() {
             {NAV_ITEMS.map((item) => (
               <li key={item.to}>
                 <NavLink to={item.to} className={linkClass}>
-                  {item.label}
+                  {navContent(item)}
                 </NavLink>
               </li>
             ))}

@@ -9,7 +9,7 @@ export const ProductController = {
 
   async getById(req: Request, res: Response) {
     const product = await ProductRepository.byId(String(req.params.id));
-    if (!product) throw new NotFoundException("Product not found");
+    if (!product) throw new NotFoundException("Producto no encontrado");
     res.json(product);
   },
 
@@ -20,14 +20,14 @@ export const ProductController = {
 
   async update(req: Request, res: Response) {
     const existing = await ProductRepository.byId(String(req.params.id));
-    if (!existing) throw new NotFoundException("Product not found");
+    if (!existing) throw new NotFoundException("Producto no encontrado");
     const product = await ProductRepository.update(String(req.params.id), req.body);
     res.json({ message: "Product updated", data: product });
   },
 
   async delete(req: Request, res: Response) {
     const existing = await ProductRepository.byId(String(req.params.id));
-    if (!existing) throw new NotFoundException("Product not found");
+    if (!existing) throw new NotFoundException("Producto no encontrado");
     await ProductRepository.delete(String(req.params.id));
     res.json({ message: "Product deleted", id: req.params.id });
   },

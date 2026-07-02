@@ -21,7 +21,7 @@ export const validate =
       const issues = result.error.issues
         .map((i) => `${i.path.join(".")}: ${i.message}`)
         .join("; ");
-      throw new HttpException(`Validation failed: ${issues}`, 400);
+      throw new HttpException(`Validación fallida: ${issues}`, 400);
     }
     // Express 5 makes `req.query` and `req.params` read-only getters,
     // so we only mutate `body` (which is safe). Para query/params, el
@@ -36,5 +36,5 @@ export const validate =
   };
 
 export const idParamSchema = z.object({
-  id: z.string().uuid("Invalid uuid"),
+  id: z.string().uuid("ID inválido"),
 });

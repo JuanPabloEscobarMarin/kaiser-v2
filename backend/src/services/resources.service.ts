@@ -116,7 +116,7 @@ const localDriver: StorageDriver = {
     try {
       await stat(filePath);
     } catch {
-      throw new NotFoundException("Image not found");
+      throw new NotFoundException("Imagen no encontrada");
     }
     const ext = path.extname(safeName).toLowerCase();
     return {
@@ -133,7 +133,7 @@ export const ResourcesService = {
   getImage: (slug: string) => driver.get(slug),
 
   async storeImage(file: Express.Multer.File | undefined) {
-    if (!file) throw new BadRequestException("File is required");
+    if (!file) throw new BadRequestException("El archivo es obligatorio");
     const detected = sniffImageType(file.buffer);
     if (!detected || !ALLOWED_MIME.has(detected)) {
       throw new BadRequestException(

@@ -70,6 +70,8 @@ export function EditAppointmentDrawer({
   const [selectedSlot, setSelectedSlot] = useState<AvailabilitySlot | null>(
     null,
   );
+  const [notes, setNotes] = useState("");
+  const [finalPrice, setFinalPrice] = useState("");
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -80,6 +82,8 @@ export function EditAppointmentDrawer({
     setEmployeeId(appointment.employeeId);
     setDate(new Date(appointment.scheduledAt));
     setState(appointment.state);
+    setNotes(appointment.notes ?? "");
+    setFinalPrice(appointment.finalPrice ?? "");
     setSelectedSlot({
       start: appointment.scheduledAt,
       end: appointment.endsAt,
@@ -128,12 +132,19 @@ export function EditAppointmentDrawer({
   if (!appointment) return null;
 
   const customer = appointment.booking?.customer;
+  const selectedService = services.find((s) => s.id === serviceId);
+  const isVariable = selectedService?.variablePrice ?? false;
   const dirtyState = state !== appointment.state;
+  const dirtyNotes = notes !== (appointment.notes ?? "");
+  const dirtyFinalPrice = finalPrice !== (appointment.finalPrice ?? "");
   const dirtySlot =
     selectedSlot?.start !== appointment.scheduledAt ||
     serviceId !== appointment.serviceId ||
     employeeId !== appointment.employeeId;
-  const canSave = !readOnly && (dirtyState || dirtySlot) && !submitting;
+  const canSave =
+    !readOnly &&
+    (dirtyState || dirtySlot || dirtyNotes || dirtyFinalPrice) &&
+    !submitting;
 
   const handleSave = async () => {
     if (!canSave) return;
@@ -144,8 +155,12 @@ export function EditAppointmentDrawer({
         employeeId?: string;
         scheduledAt?: string;
         state?: AppointmentState;
+        finalPrice?: string | null;
+        notes?: string;
       } = {};
       if (dirtyState) payload.state = state;
+      if (dirtyNotes) payload.notes = notes.trim();
+      if (dirtyFinalPrice) payload.finalPrice = finalPrice.trim() || null;
       if (dirtySlot && selectedSlot) {
         payload.serviceId = serviceId;
         payload.employeeId = employeeId;
@@ -209,12 +224,12 @@ export function EditAppointmentDrawer({
                     {customer?.fullName ?? "—"}
                   </div>
                   <div>
-                    <span className="opacity-60">Cédula:</span>{" "}
-                    {customer?.identification ?? "—"}
-                  </div>
-                  <div>
                     <span className="opacity-60">Teléfono:</span>{" "}
                     {customer?.phone ?? "—"}
+                  </div>
+                  <div>
+                    <span className="opacity-60">Correo:</span>{" "}
+                    {customer?.email ?? "—"}
                   </div>
                 </div>
               </div>
@@ -268,6 +283,60 @@ export function EditAppointmentDrawer({
                   </option>
                 ))}
               </select>
+            </fieldset>
+
+            {isVariable && (
+              <fieldset>
+                <legend className="font-semibold mb-1">
+                  Precio final cobrado
+                </legend>
+                {readOnly ? (
+                  <p className="text-sm">
+                    {appointment.finalPrice
+                      ? `$${appointment.finalPrice}`
+                      : "Pendiente por definir"}
+                  </p>
+                ) : (
+                  <>
+                    <input
+                      type="number"
+                      min="0"
+                      className="input input-bordered w-full"
+                      placeholder={`Desde $${selectedService?.price ?? "0"}`}
+                      value={finalPrice}
+                      onChange={(e) => setFinalPrice(e.target.value)}
+                    />
+                    <small className="text-xs opacity-60">
+                      Servicio de precio variable. Deja vacío para usar el
+                      precio base.
+                    </small>
+                  </>
+                )}
+              </fieldset>
+            )}
+
+            <fieldset>
+              <legend className="font-semibold mb-1">
+                Observación (interna)
+              </legend>
+              {readOnly ? (
+                <p className="text-sm whitespace-pre-wrap">
+                  {appointment.notes?.trim() ? (
+                    appointment.notes
+                  ) : (
+                    <span className="opacity-50">Sin observación</span>
+                  )}
+                </p>
+              ) : (
+                <textarea
+                  className="textarea textarea-bordered w-full"
+                  placeholder="Notas para el equipo (opcional)"
+                  rows={2}
+                  maxLength={500}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                />
+              )}
             </fieldset>
 
             <fieldset>

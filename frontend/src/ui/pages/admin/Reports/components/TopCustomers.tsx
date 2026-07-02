@@ -85,7 +85,7 @@ export function TopCustomers({ rows }: Props) {
                 <tbody>
                   {byFrequency.map((r, i) => (
                     <tr
-                      key={`f-${r.identification}`}
+                      key={`f-${r.phone}`}
                       className="animate-row-in hover:bg-base-200/50 transition-colors"
                       style={{ animationDelay: `${Math.min(i * 40, 400)}ms` }}
                     >
@@ -97,7 +97,7 @@ export function TopCustomers({ rows }: Props) {
                               {r.fullName}
                             </div>
                             <div className="text-xs opacity-60">
-                              CC {r.identification}
+                              {r.phone}
                             </div>
                           </div>
                         </div>
@@ -127,7 +127,7 @@ export function TopCustomers({ rows }: Props) {
                 <tbody>
                   {bySpending.map((r, i) => (
                     <tr
-                      key={`s-${r.identification}`}
+                      key={`s-${r.phone}`}
                       className="animate-row-in hover:bg-base-200/50 transition-colors"
                       style={{ animationDelay: `${Math.min(i * 40, 400)}ms` }}
                     >

@@ -22,7 +22,7 @@ export const SaleService = {
 
   async getById(id: string) {
     const sale = await SaleRepository.byId(id);
-    if (!sale) throw new NotFoundException("Sale not found");
+    if (!sale) throw new NotFoundException("Venta no encontrada");
     return sale;
   },
 
@@ -92,7 +92,7 @@ export const SaleService = {
 
   async void(id: string) {
     const sale = await SaleRepository.void(id);
-    if (!sale) throw new NotFoundException("Sale not found");
+    if (!sale) throw new NotFoundException("Venta no encontrada");
     return sale;
   },
 };
