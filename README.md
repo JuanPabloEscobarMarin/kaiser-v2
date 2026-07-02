@@ -2,6 +2,41 @@
 
 MVP completo de reservas de barbería: cliente reserva turnos, admin gestiona servicios, empleados y citas.
 
+## ⚠️ PENDIENTE en producción (activar correo y recordatorios)
+
+Las funciones de **campañas por correo** y **recordatorios de cita** ya están en el
+código pero quedan **inactivas (no-op)** hasta configurar credenciales. Para activarlas,
+agregar estas variables de entorno en Vercel → proyecto **`kaiser-backend`** → Settings →
+Environment Variables (Production) y **redeployar el backend** (`bash scripts/deploy-backend.sh`):
+
+| Variable | Para qué | Notas |
+|----------|----------|-------|
+| `RESEND_API_KEY` | Enviar correos (campañas + recordatorios) | Crear cuenta en [resend.com](https://resend.com) y **verificar un dominio** de envío. |
+| `RESEND_FROM` | Remitente de los correos | Ej: `Kaiser <hola@tudominio.com>`. Con dominio verificado. |
+| `CRON_SECRET` | Proteger el cron de recordatorios | Cualquier string secreto. **Obligatorio**: sin él, `/api/cron/reminders` responde 403. Vercel lo envía solo como `Authorization: Bearer`. |
+
+- Sin estas variables, el resto de la app funciona igual; solo el envío de correo/WhatsApp queda en no-op.
+- **WhatsApp proactivo** (recordatorios/promos fuera de la ventana de 24 h) además requiere
+  **plantillas aprobadas en Meta** — hoy usa `sendText` como best-effort.
+- El cron de recordatorios está en `backend/vercel.json` como **diario** (`0 13 * * *` ≈ 8am COT)
+  porque la cuenta Vercel es **Hobby** (no permite crons horarios). Con plan Pro se puede subir la frecuencia.
+
+## Despliegue a producción
+
+Vercel **no** despliega automáticamente al hacer `git push`; el deploy es manual con los scripts:
+
+```bash
+bash scripts/deploy-all.sh        # backend + frontend
+# o por separado:
+bash scripts/deploy-backend.sh
+bash scripts/deploy-frontend.sh
+```
+
+- Proyectos Vercel: `kaiser-backend` (API) y `kaiser-ab-hair-studio` (SPA).
+- BD de producción: Supabase **`kaiser-ab-hair-studio`**. El repo se mantiene con `prisma db push`
+  (la carpeta `prisma/migrations` está desactualizada respecto a `schema.prisma`); para cambios
+  de esquema en prod, generar SQL con `prisma migrate diff` y aplicarlo, o usar `db push` con cuidado.
+
 ## Stack
 
 **Backend:** Node 22+ con TS strip-only, Express 5, Prisma 7 + PostgreSQL (Supabase), Zod, bcryptjs, helmet, rate-limit.
