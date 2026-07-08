@@ -8,6 +8,26 @@ export const EmployeeDeductionRepository = {
       orderBy: { createdAt: "desc" },
     }),
 
+  /**
+   * Listado filtrable para el informe económico: todos los empleados o uno,
+   * acotado opcionalmente por rango de fecha de registro.
+   */
+  list: (filters: { employeeId?: string; from?: Date; to?: Date }) =>
+    prisma.employeeDeduction.findMany({
+      where: {
+        ...(filters.employeeId ? { employeeId: filters.employeeId } : {}),
+        ...(filters.from || filters.to
+          ? {
+              createdAt: {
+                ...(filters.from ? { gte: filters.from } : {}),
+                ...(filters.to ? { lte: filters.to } : {}),
+              },
+            }
+          : {}),
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+
   byId: (id: string) =>
     prisma.employeeDeduction.findUnique({ where: { id } }),
 

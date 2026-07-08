@@ -8,6 +8,9 @@ import { CountUp } from "@/ui/components/CountUp";
 import { Reveal } from "@/ui/components/Reveal";
 import { StatsSkeleton } from "@/ui/components/Skeletons";
 import { DailyCloseView } from "@/ui/components/DailyCloseView";
+import { appointmentServicesLabel } from "@/lib/appointment";
+import { appointmentCommission } from "@/lib/commission";
+import { businessNow, businessTodayYmd } from "@/lib/business-time";
 import { formatCurrency } from "@/lib/format";
 
 const formatDate = (iso: string) =>
@@ -28,7 +31,8 @@ export function EmployeeDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    // Hoy en hora del negocio: toISOString() daría mañana después de las 7pm.
+    const today = businessTodayYmd();
     Promise.all([
       employeePortalApi.me(),
       employeePortalApi.myAppointments(),
@@ -50,18 +54,23 @@ export function EmployeeDashboard() {
     return <StatsSkeleton count={4} />;
   }
 
-  const now = new Date();
+  // scheduledAt es hora de pared fake-UTC: comparar contra el "ahora" del
+  // negocio, no contra el instante real (estaría corrido 5 horas).
+  const now = businessNow();
   const upcoming = appointments.filter(
     (a) => a.state === "SCHEDULED" && new Date(a.scheduledAt) > now,
   );
   const finished = appointments.filter((a) => a.state === "FINISHED");
 
-  const serviceCommission = finished.reduce((sum, a) => {
-    const price = Number(a.service?.price ?? 0) - Number(a.service?.discount ?? 0);
-    const svcAssignment = profile?.services?.find((s) => s.id === a.serviceId);
-    const pct = Number(svcAssignment?.commission ?? 0);
-    return sum + (price * pct) / 100;
-  }, 0);
+  // Comisión de servicios: snapshot congelado al finalizar cada cita;
+  // fallback con las tasas actuales del perfil para citas pre-snapshot.
+  const profileRates = new Map(
+    (profile?.services ?? []).map((s) => [s.id, Number(s.commission ?? 0)]),
+  );
+  const serviceCommission = finished.reduce(
+    (sum, a) => sum + appointmentCommission(a, profileRates),
+    0,
+  );
   const productCommission = sales.reduce(
     (sum, s) => sum + Number(s.commissionTotal),
     0,
@@ -127,7 +136,7 @@ export function EmployeeDashboard() {
                   className="flex justify-between items-center p-3 rounded-box border border-base-300"
                 >
                   <div>
-                    <p className="font-medium">{a.service?.name ?? "—"}</p>
+                    <p className="font-medium">{appointmentServicesLabel(a)}</p>
                     <p className="text-xs opacity-60">
                       {a.booking?.customer?.fullName ?? "Cliente sin nombre"}
                     </p>

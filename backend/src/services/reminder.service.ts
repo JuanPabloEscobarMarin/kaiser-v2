@@ -1,12 +1,11 @@
 import { prisma } from "../lib/prisma.ts";
 import { EmailService } from "./email.service.ts";
 import { WhatsAppService } from "./whatsapp.service.ts";
+import { formatWallClock, wallClockNow } from "../lib/business-hours.ts";
+import { env } from "../config/env.ts";
 
 /** Ventana de anticipación del recordatorio (horas antes de la cita). */
 const LOOKAHEAD_HOURS = 24;
-
-const formatWhen = (d: Date) =>
-  `${d.toISOString().slice(0, 10)} a las ${d.toISOString().slice(11, 16)} (UTC)`;
 
 const markSent = (id: string) =>
   prisma.appointment.update({
@@ -21,7 +20,9 @@ export const ReminderService = {
    * marca `reminderSentAt` para no reenviar.
    */
   async runDueReminders() {
-    const now = new Date();
+    // Reloj de pared del negocio, no new Date(): scheduledAt está en la
+    // convención fake-UTC (ver lib/business-hours.ts).
+    const now = wallClockNow(env.BUSINESS_TIMEZONE);
     const until = new Date(now.getTime() + LOOKAHEAD_HOURS * 3_600_000);
 
     const appts = await prisma.appointment.findMany({
@@ -47,7 +48,7 @@ export const ReminderService = {
         continue;
       }
 
-      const msg = `Hola ${customer.fullName}, te recordamos tu cita de ${a.service?.name ?? "servicio"} el ${formatWhen(a.scheduledAt)} con ${a.employee?.fullName ?? "nuestro equipo"}. ¡Te esperamos!`;
+      const msg = `Hola ${customer.fullName}, te recordamos tu cita de ${a.service?.name ?? "servicio"} el ${formatWallClock(a.scheduledAt)} con ${a.employee?.fullName ?? "nuestro equipo"}. ¡Te esperamos!`;
 
       if (customer.email) {
         try {

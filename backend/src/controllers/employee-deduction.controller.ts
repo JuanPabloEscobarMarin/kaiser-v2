@@ -4,9 +4,13 @@ import { EmployeeDeductionService } from "../services/employee-deduction.service
 export const EmployeeDeductionController = {
   async list(req: Request, res: Response) {
     res.json(
-      await EmployeeDeductionService.listByEmployee(
-        String(req.query.employeeId),
-      ),
+      await EmployeeDeductionService.list({
+        ...(req.query.employeeId
+          ? { employeeId: String(req.query.employeeId) }
+          : {}),
+        ...(req.query.from ? { from: String(req.query.from) } : {}),
+        ...(req.query.to ? { to: String(req.query.to) } : {}),
+      }),
     );
   },
 

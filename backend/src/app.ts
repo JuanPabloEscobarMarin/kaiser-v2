@@ -20,16 +20,7 @@ app.use(
     credentials: true,
   }),
 );
-// Capturamos el cuerpo crudo para poder validar la firma del webhook de WhatsApp
-// (Meta firma el body exacto; si lo re-serializamos, la firma no coincidiría).
-app.use(
-  express.json({
-    limit: "1mb",
-    verify: (req, _res, buf) => {
-      (req as express.Request & { rawBody?: Buffer }).rawBody = buf;
-    },
-  }),
-);
+app.use(express.json({ limit: "1mb" }));
 app.use(cookieParser());
 
 // Defensa CSRF explícita: para métodos que mutan estado, si el navegador

@@ -3,6 +3,13 @@ import { ApiError, employeePortalApi } from "@/core/api";
 import type { EmployeeProfile } from "@/core/api/employee-portal.api";
 import type { Appointment, Employee } from "@/core/types";
 import { AppointmentCalendar } from "@/ui/pages/admin/AppointmentManager/components/AppointmentCalendar";
+import {
+  appointmentDurationMin,
+  appointmentServices,
+  appointmentServicesLabel,
+  appointmentTotal,
+} from "@/lib/appointment";
+import { formatPrice } from "@/lib/format";
 import { useNotify } from "@/ui/hooks/useNotify";
 import { ListSkeleton } from "@/ui/components/Skeletons";
 
@@ -187,7 +194,13 @@ export function EmployeeAppointments() {
                     onClick={() => setSelected(a)}
                   >
                     <td className="whitespace-nowrap">{formatDateTime(a.scheduledAt)}</td>
-                    <td>{a.service?.name ?? "—"}</td>
+                    <td>
+                      <div>{appointmentServicesLabel(a)}</div>
+                      <div className="text-xs opacity-60">
+                        {appointmentDurationMin(a)} min ·{" "}
+                        {formatPrice(appointmentTotal(a))}
+                      </div>
+                    </td>
                     <td>{a.booking?.customer?.fullName ?? "—"}</td>
                     <td>
                       <span className={`badge badge-sm ${stateInfo.class}`}>
@@ -223,9 +236,16 @@ export function EmployeeAppointments() {
               </button>
             </div>
             <dl className="grid grid-cols-3 gap-y-2 text-sm">
-              <dt className="opacity-60">Servicio</dt>
+              <dt className="opacity-60">
+                {appointmentServices(selected).length > 1 ? "Servicios" : "Servicio"}
+              </dt>
               <dd className="col-span-2 font-medium">
-                {selected.service?.name ?? "—"}
+                {appointmentServicesLabel(selected)}
+              </dd>
+
+              <dt className="opacity-60">Total</dt>
+              <dd className="col-span-2 font-medium text-primary">
+                {formatPrice(appointmentTotal(selected))}
               </dd>
 
               <dt className="opacity-60">Cliente</dt>

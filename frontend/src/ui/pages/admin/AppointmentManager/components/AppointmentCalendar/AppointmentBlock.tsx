@@ -1,5 +1,10 @@
 import type { Appointment } from "@/core/types";
 import {
+  appointmentServicesLabel,
+  appointmentTotal,
+} from "@/lib/appointment";
+import { formatPrice } from "@/lib/format";
+import {
   BUSINESS_OPEN,
   PIXELS_PER_MINUTE,
   STATE_BADGES,
@@ -34,6 +39,9 @@ export function AppointmentBlock({
 
   const stateInfo = STATE_BADGES[appointment.state];
   const customer = appointment.booking?.customer;
+  const servicesLabel = appointmentServicesLabel(appointment);
+  const total = appointmentTotal(appointment);
+  const timeRange = `${formatTime(appointment.scheduledAt)}–${formatTime(appointment.endsAt)}`;
 
   return (
     <button
@@ -46,7 +54,7 @@ export function AppointmentBlock({
         left: `calc(${leftPct}% + 2px)`,
         width: `calc(${widthPct}% - 4px)`,
       }}
-      title={`${formatTime(appointment.scheduledAt)} — ${customer?.fullName ?? "Sin cliente"}`}
+      title={`${timeRange} · ${customer?.fullName ?? "Sin cliente"} · ${servicesLabel} · ${formatPrice(total)}`}
     >
       <div className="text-[11px] font-bold leading-tight">
         {formatTime(appointment.scheduledAt)}
@@ -54,9 +62,7 @@ export function AppointmentBlock({
       <div className="text-xs font-semibold truncate">
         {customer?.fullName ?? "—"}
       </div>
-      <div className="text-[10px] truncate opacity-80">
-        {appointment.service?.name}
-      </div>
+      <div className="text-[10px] truncate opacity-80">{servicesLabel}</div>
       {showEmployee && (
         <div className="text-[10px] truncate opacity-70">
           {appointment.employee?.fullName}

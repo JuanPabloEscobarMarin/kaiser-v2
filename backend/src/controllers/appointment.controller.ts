@@ -18,19 +18,22 @@ export const AppointmentController = {
 
   async availability(req: Request, res: Response) {
     res.json(
-      await AppointmentService.availability({
-        employeeId: req.query.employeeId as string,
-        date: req.query.date as string,
-        ...(req.query.serviceId
-          ? { serviceId: req.query.serviceId as string }
-          : {}),
-        ...(req.query.serviceIds
-          ? { serviceIds: req.query.serviceIds as string }
-          : {}),
-        ...(req.query.packageId
-          ? { packageId: req.query.packageId as string }
-          : {}),
-      }),
+      await AppointmentService.availability(
+        {
+          employeeId: req.query.employeeId as string,
+          date: req.query.date as string,
+          ...(req.query.serviceId
+            ? { serviceId: req.query.serviceId as string }
+            : {}),
+          ...(req.query.serviceIds
+            ? { serviceIds: req.query.serviceIds as string }
+            : {}),
+          ...(req.query.packageId
+            ? { packageId: req.query.packageId as string }
+            : {}),
+        },
+        { adminOverride: req.auth?.role === "ADMIN" },
+      ),
     );
   },
 

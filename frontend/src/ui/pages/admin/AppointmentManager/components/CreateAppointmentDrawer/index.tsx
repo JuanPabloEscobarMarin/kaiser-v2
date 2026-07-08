@@ -124,6 +124,21 @@ export function CreateAppointmentDrawer({ isOpen, onClose, reload }: Props) {
   const canSubmit =
     hasSelection && employeeId && selectedSlot && customerComplete && !submitting;
 
+  // Aviso (no bloqueante: el admin puede agendar igual) cuando el profesional
+  // no tiene asignados todos los servicios elegidos — su comisión sería $0.
+  const selectedEmployee = employees.find((e) => e.id === employeeId);
+  const requiredServiceIds = packageId
+    ? (packages.find((p) => p.id === packageId)?.items.map((i) => i.serviceId) ??
+      [])
+    : serviceIds;
+  const missingServiceNames = selectedEmployee
+    ? requiredServiceIds
+        .filter(
+          (sid) => !selectedEmployee.services?.some((s) => s.id === sid),
+        )
+        .map((sid) => services.find((s) => s.id === sid)?.name ?? "servicio")
+    : [];
+
   const handleSubmit = async () => {
     if (!canSubmit || !selectedSlot) return;
     setSubmitting(true);
@@ -240,6 +255,20 @@ export function CreateAppointmentDrawer({ isOpen, onClose, reload }: Props) {
                   </option>
                 ))}
               </select>
+              {missingServiceNames.length > 0 && (
+                <div className="alert alert-warning text-sm mt-2">
+                  <span>
+                    ⚠ {selectedEmployee?.fullName} no tiene asignado
+                    {missingServiceNames.length > 1 ? "s" : ""}:{" "}
+                    <strong>{missingServiceNames.join(", ")}</strong>. Puedes
+                    agendar igualmente, pero su comisión por{" "}
+                    {missingServiceNames.length > 1
+                      ? "esos servicios"
+                      : "ese servicio"}{" "}
+                    será $0.
+                  </span>
+                </div>
+              )}
             </fieldset>
 
             {hasSelection && employeeId && (

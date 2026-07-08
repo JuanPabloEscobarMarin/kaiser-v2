@@ -3,6 +3,7 @@ import { Link, NavLink, useNavigate } from "react-router";
 import { useAuth } from "@/ui/hooks/useAuth";
 import { useBranding } from "@/ui/contexts/branding/context";
 import { resourcesApi } from "@/core/api";
+import { FadeImg } from "@/ui/components/FadeImg";
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -40,7 +41,7 @@ const Navbar = () => {
           className="text-xl font-bold px-2 flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95"
         >
           {logoUrl ? (
-            <img src={logoUrl} alt={name} className="h-8 max-w-[120px] object-contain" />
+            <FadeImg src={logoUrl} alt={name} className="h-8 max-w-[120px] object-contain" />
           ) : (
             name
           )}

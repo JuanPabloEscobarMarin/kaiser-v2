@@ -80,6 +80,11 @@ export function ServiceDetail() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Aviso cuando se deselecciona al profesional por agregar un servicio que
+  // no realiza.
+  const [employeeResetNotice, setEmployeeResetNotice] = useState<string | null>(
+    null,
+  );
 
   const scheduleRef = useRef<HTMLElement>(null);
   const slotsRef = useRef<HTMLDivElement>(null);
@@ -156,8 +161,43 @@ export function ServiceDetail() {
     [service, extraIds],
   );
 
+  // Servicios que el profesional elegido debe saber hacer: en modo combo son
+  // TODOS los del paquete (la ruta solo trae el primero); si no, los elegidos.
+  const requiredIds = useMemo(
+    () => (combo ? combo.items.map((i) => i.serviceId) : serviceIds),
+    [combo, serviceIds],
+  );
+
+  const performsAll = (emp: Employee, ids: string[]) =>
+    ids.every((sid) => emp.services?.some((s) => s.id === sid));
+
+  // Solo se ofrecen profesionales que realizan TODOS los servicios de la cita.
+  // El backend valida lo mismo (assertEmployeeHasServices); esto es la UX.
+  const eligibleEmployees = useMemo(
+    () => employees.filter((emp) => performsAll(emp, requiredIds)),
+    [employees, requiredIds],
+  );
+
+  // Si al agregar un extra el profesional elegido deja de ser elegible, se
+  // deselecciona (con aviso) para que el cliente escoja otro.
+  useEffect(() => {
+    if (!employee) return;
+    if (!performsAll(employee, requiredIds)) {
+      setEmployeeResetNotice(employee.fullName);
+      setEmployee(null);
+      setSelectedSlot(null);
+    }
+  }, [employee, requiredIds]);
+
   useEffect(() => {
     if (!service || !employee || !dateYmd) {
+      setSlots([]);
+      setSelectedSlot(null);
+      return;
+    }
+    // El empleado será deseleccionado por el efecto de elegibilidad en este
+    // mismo render; no pedir horarios de una combinación que no realiza.
+    if (!requiredIds.every((sid) => employee.services?.some((s) => s.id === sid))) {
       setSlots([]);
       setSelectedSlot(null);
       return;
@@ -175,7 +215,7 @@ export function ServiceDetail() {
       .then((res) => setSlots(res.slots))
       .catch(() => setSlots([]))
       .finally(() => setLoadingSlots(false));
-  }, [service, employee, dateYmd, serviceIds, combo]);
+  }, [service, employee, dateYmd, serviceIds, combo, requiredIds]);
 
   const customerComplete =
     customer.fullName.trim().length >= 2 &&
@@ -360,19 +400,29 @@ export function ServiceDetail() {
                   .filter((s) => s.id !== service.id)
                   .map((s) => {
                     const checked = extraIds.includes(s.id);
+                    // Sin marcar: ¿algún profesional realiza la selección
+                    // actual + este servicio? Si nadie puede, se deshabilita.
+                    const nobodyCanDo =
+                      !checked &&
+                      !employees.some((emp) =>
+                        performsAll(emp, [...serviceIds, s.id]),
+                      );
                     return (
                       <label
                         key={s.id}
-                        className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${
-                          checked
-                            ? "border-primary bg-primary/5"
-                            : "border-base-300 hover:border-primary/40"
+                        className={`flex items-center gap-2 p-2 rounded-lg border transition-colors ${
+                          nobodyCanDo
+                            ? "border-base-300 opacity-45 cursor-not-allowed"
+                            : checked
+                              ? "border-primary bg-primary/5 cursor-pointer"
+                              : "border-base-300 hover:border-primary/40 cursor-pointer"
                         }`}
                       >
                         <input
                           type="checkbox"
                           className="checkbox checkbox-sm checkbox-primary"
                           checked={checked}
+                          disabled={nobodyCanDo}
                           onChange={() =>
                             setExtraIds((cur) =>
                               cur.includes(s.id)
@@ -381,7 +431,14 @@ export function ServiceDetail() {
                             )
                           }
                         />
-                        <span className="flex-1 text-sm">{s.name}</span>
+                        <span className="flex-1 text-sm">
+                          {s.name}
+                          {nobodyCanDo && (
+                            <span className="block text-xs opacity-60">
+                              Ningún profesional la ofrece junto a tu selección
+                            </span>
+                          )}
+                        </span>
                         <span className="text-xs opacity-60">
                           {s.duration} min
                         </span>
@@ -400,19 +457,34 @@ export function ServiceDetail() {
               <span className="badge badge-primary">1</span>
               Elige tu profesional
             </h2>
-            {employees.length === 0 ? (
+            {employeeResetNotice && (
+              <div className="alert alert-info text-sm my-2">
+                <span>
+                  {employeeResetNotice} no realiza todos los servicios que
+                  elegiste; escoge otro profesional.
+                </span>
+              </div>
+            )}
+            {eligibleEmployees.length === 0 ? (
               <div className="alert alert-warning text-sm my-2">
-                <span>No hay profesionales disponibles para este servicio.</span>
+                <span>
+                  {employees.length === 0
+                    ? "No hay profesionales disponibles para este servicio."
+                    : "Ningún profesional realiza esta combinación de servicios. Quita alguno de los servicios extra."}
+                </span>
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mt-2">
-                {employees.map((emp, i) => {
+                {eligibleEmployees.map((emp, i) => {
                   const selected = employee?.id === emp.id;
                   return (
                     <button
                       key={emp.id}
                       type="button"
-                      onClick={() => setEmployee(emp)}
+                      onClick={() => {
+                        setEmployee(emp);
+                        setEmployeeResetNotice(null);
+                      }}
                       style={{ animationDelay: `${i * 60}ms` }}
                       className={`animate-card-in relative flex flex-col items-center gap-2 p-3 rounded-box border-2 transition-all duration-200 active:scale-[0.97] ${
                         selected

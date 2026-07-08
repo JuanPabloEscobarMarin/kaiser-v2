@@ -9,12 +9,18 @@ import { EmployeeService } from "./employee.service.ts";
 import { CustomerService } from "./customer.service.ts";
 import { SettingsService } from "./settings.service.ts";
 import { NotificationService } from "./notification.service.ts";
+import { EmailService } from "./email.service.ts";
+import { WhatsAppService } from "./whatsapp.service.ts";
 import { EmployeeBlocksRepository } from "../repositories/employee-blocks.repository.ts";
 import {
   resolveDaySchedule,
   isBlocked,
+  wallClockNow,
+  formatWallClock,
   type BusinessHoursConfig,
 } from "../lib/business-hours.ts";
+import { computeServiceCommission } from "../lib/commission.ts";
+import { env } from "../config/env.ts";
 import {
   BadRequestException,
   ConflictException,
@@ -27,6 +33,12 @@ import type {
 
 /** Granularity of offered start times, in minutes. */
 const SLOT_MINUTES = 30;
+
+const currency = new Intl.NumberFormat("es-CO", {
+  style: "currency",
+  currency: "COP",
+  maximumFractionDigits: 0,
+});
 
 const startOfDay = (yyyyMmDd: string) => new Date(`${yyyyMmDd}T00:00:00.000Z`);
 const endOfDay = (yyyyMmDd: string) => new Date(`${yyyyMmDd}T23:59:59.999Z`);
@@ -118,13 +130,36 @@ export const AppointmentService = {
     return { serviceIds, packageId, packagePrice, services, totalDuration };
   },
 
-  async availability(input: {
-    employeeId: string;
-    serviceId?: string;
-    serviceIds?: string;
-    packageId?: string;
-    date: string;
-  }) {
+  /**
+   * Verifica que el empleado tenga asignados TODOS los servicios pedidos.
+   * Sin esto un cliente puede combinar servicios de distintos profesionales
+   * (p. ej. corte de dama + barba con una estilista) y crear citas que el
+   * empleado no puede atender — y por las que además no cobraría comisión.
+   */
+  assertEmployeeHasServices(
+    employee: { fullName: string; services: { id: string }[] },
+    services: { id: string; name: string }[],
+  ) {
+    const assigned = new Set(employee.services.map((s) => s.id));
+    const missing = services.filter((s) => !assigned.has(s.id));
+    if (missing.length > 0) {
+      throw new BadRequestException(
+        `${employee.fullName} no realiza: ${missing.map((s) => s.name).join(", ")}. Elige otro profesional o quita esos servicios.`,
+      );
+    }
+  },
+
+  async availability(
+    input: {
+      employeeId: string;
+      serviceId?: string;
+      serviceIds?: string;
+      packageId?: string;
+      date: string;
+    },
+    options: { adminOverride?: boolean } = {},
+  ) {
+    const adminOverride = options.adminOverride ?? false;
     const employee = await EmployeeService.getById(input.employeeId);
     if (!employee.state) {
       throw new BadRequestException("El empleado no está activo");
@@ -139,8 +174,15 @@ export const AppointmentService = {
         ...(parsedIds && parsedIds.length ? { serviceIds: parsedIds } : {}),
         ...(input.serviceId ? { serviceId: input.serviceId } : {}),
       },
-      { adminOverride: false },
+      { adminOverride },
     );
+
+    // El admin puede consultar cualquier combinación (mismo bypass que
+    // adminBook); a los clientes no se les ofrecen horas de servicios que el
+    // profesional no realiza.
+    if (!adminOverride) {
+      this.assertEmployeeHasServices(employee, services);
+    }
 
     const summary = {
       service: {
@@ -165,6 +207,7 @@ export const AppointmentService = {
     const schedule = resolveDaySchedule(hours, input.date);
     if (schedule.closed) return { ...summary, slots: [] };
 
+    const now = wallClockNow(env.BUSINESS_TIMEZONE);
     const slots: { start: string; end: string }[] = [];
 
     // Walk every candidate start time within opening hours that leaves room for
@@ -177,6 +220,10 @@ export const AppointmentService = {
       const endMin = startMin + totalDuration;
       const slotStart = dateAtMinutes(input.date, startMin);
       const slotEnd = dateAtMinutes(input.date, endMin);
+
+      // Nunca ofrecer horas que ya pasaron (hoy: solo de la hora actual en
+      // adelante; días anteriores: nada).
+      if (slotStart.getTime() <= now.getTime()) continue;
 
       const overlaps = taken.some(
         (a) => a.scheduledAt < slotEnd && a.endsAt > slotStart,
@@ -223,8 +270,18 @@ export const AppointmentService = {
       throw new BadRequestException("El servicio no está activo");
     }
 
+    // Los clientes solo pueden agendar servicios que el profesional realiza.
+    // El admin conserva el bypass (mostrador puede asignar casos especiales),
+    // aunque la comisión de servicios no asignados será 0.
+    if (!options.adminOverride) {
+      this.assertEmployeeHasServices(employee, services);
+    }
+
     const start = new Date(data.scheduledAt);
-    if (start.getTime() < Date.now()) {
+    // Comparar contra la hora de pared del negocio, no Date.now(): scheduledAt
+    // viene en la convención fake-UTC y el reloj real del servidor (UTC) va
+    // horas adelante de Colombia.
+    if (start.getTime() < wallClockNow(env.BUSINESS_TIMEZONE).getTime()) {
       throw new BadRequestException("No se puede agendar en el pasado");
     }
     const end = computeEndsAt(start, totalDuration);
@@ -268,7 +325,97 @@ export const AppointmentService = {
       `${customer.fullName} · ${services.map((s) => s.name).join(" + ")} · ${start.toISOString().slice(0, 16).replace("T", " ")}`,
     ).catch(() => {});
 
+    // Notificación de confirmación al cliente por correo y/o WhatsApp
+    // (fire-and-forget: un fallo de envío no debe tumbar la reserva ya creada).
+    if (customer.email || (customer.phone && WhatsAppService.isConfigured())) {
+      void this.notifyCustomerOfBooking({
+        customerName: customer.fullName,
+        customerEmail: customer.email,
+        customerPhone: customer.phone,
+        employeeName: employee.fullName,
+        serviceNames: services.map((s) => s.name).join(" + "),
+        start,
+        packagePrice,
+        services,
+        notes: data.notes ?? null,
+      }).catch(() => {});
+    }
+
     return appointment;
+  },
+
+  async notifyCustomerOfBooking(input: {
+    customerName: string;
+    customerEmail: string | null;
+    customerPhone: string;
+    employeeName: string;
+    serviceNames: string;
+    start: Date;
+    packagePrice: string | null;
+    services: { price: unknown; discount: unknown; variablePrice: boolean }[];
+    notes: string | null;
+  }) {
+    // SettingsService.get() solo tipa `homeContent` (ver loadBusinessHours
+    // arriba, mismo caso); los campos planos del negocio existen en runtime.
+    const settings = (await SettingsService.get()) as unknown as {
+      name: string;
+      phone: string;
+      address: string;
+    };
+
+    const priceLabel = input.packagePrice
+      ? currency.format(Number(input.packagePrice))
+      : `${input.services.some((s) => s.variablePrice) ? "Desde " : ""}${currency.format(
+          input.services.reduce(
+            (sum, s) => sum + Math.max(0, Number(s.price) - Number(s.discount)),
+            0,
+          ),
+        )}`;
+
+    if (input.customerEmail) {
+      const contactLines = [
+        settings.address ? `📍 ${settings.address}` : "",
+        settings.phone ? `📞 ${settings.phone}` : "",
+      ]
+        .filter(Boolean)
+        .join("<br>");
+
+      const html = `
+        <div style="font-family:sans-serif;font-size:15px;line-height:1.6">
+          <h2 style="margin-bottom:4px">¡Cita confirmada!</h2>
+          <p>Hola ${input.customerName}, tu cita en <strong>${settings.name}</strong> quedó agendada con estos datos:</p>
+          <ul style="padding-left:18px">
+            <li><strong>Servicio:</strong> ${input.serviceNames}</li>
+            <li><strong>Profesional:</strong> ${input.employeeName}</li>
+            <li><strong>Fecha y hora:</strong> ${formatWallClock(input.start)}</li>
+            <li><strong>Precio:</strong> ${priceLabel}</li>
+            ${input.notes ? `<li><strong>Notas:</strong> ${input.notes}</li>` : ""}
+          </ul>
+          ${contactLines ? `<p>${contactLines}</p>` : ""}
+          <p style="color:#888;font-size:13px">Si necesitas cancelar o reagendar, contáctanos.</p>
+        </div>
+      `;
+
+      await EmailService.send({
+        to: input.customerEmail,
+        subject: `Confirmación de tu cita en ${settings.name}`,
+        html,
+      }).catch(() => {});
+    }
+
+    if (input.customerPhone && WhatsAppService.isConfigured()) {
+      const waText = [
+        `¡Hola ${input.customerName}! Tu cita en ${settings.name} quedó confirmada:`,
+        `📅 ${formatWallClock(input.start)}`,
+        `💈 ${input.serviceNames}`,
+        `🧑 ${input.employeeName}`,
+        `💰 ${priceLabel}`,
+        ...(input.notes ? [`📝 ${input.notes}`] : []),
+        `¡Te esperamos!`,
+      ].join("\n");
+
+      await WhatsAppService.sendText(input.customerPhone, waText).catch(() => {});
+    }
   },
 
   /**
@@ -363,12 +510,46 @@ export const AppointmentService = {
     if (data.state !== undefined) update.state = data.state;
     if (data.finalPrice !== undefined) update.finalPrice = data.finalPrice;
     if (data.notes !== undefined) update.notes = data.notes;
-    return AppointmentRepository.update(id, update);
+    const updated = await AppointmentRepository.update(id, update);
+    return this.syncCommissionSnapshot(updated);
+  },
+
+  /**
+   * Mantiene Appointment.commissionAmount coherente con el estado de la cita:
+   * FINISHED → congela la comisión sobre lo cobrado (finalPrice o precio con
+   * descuento, repartido proporcionalmente en multi-servicio) con las tasas
+   * VIGENTES del empleado; cualquier otro estado → null. Re-finalizar o editar
+   * finalPrice de una cita FINISHED recalcula; reabrir borra el snapshot.
+   */
+  async syncCommissionSnapshot(
+    appt: Awaited<ReturnType<typeof AppointmentRepository.update>>,
+  ) {
+    let amount: number | null = null;
+    if (appt.state === "FINISHED") {
+      const svcs =
+        appt.services.length > 0
+          ? appt.services.map((x) => x.service)
+          : [appt.service];
+      const employee = await EmployeeService.getById(appt.employeeId);
+      const rates = new Map(
+        (employee.services ?? []).map((s) => [s.id, Number(s.commission)]),
+      );
+      amount = computeServiceCommission(svcs, appt.finalPrice, rates);
+    }
+    const current =
+      appt.commissionAmount == null ? null : Number(appt.commissionAmount);
+    if (current === amount) return appt;
+    return AppointmentRepository.update(appt.id, {
+      commissionAmount: amount == null ? null : String(amount),
+    });
   },
 
   async cancel(id: string) {
     await this.getById(id);
-    return AppointmentRepository.update(id, { state: "CANCELLED" });
+    return AppointmentRepository.update(id, {
+      state: "CANCELLED",
+      commissionAmount: null,
+    });
   },
 
   async delete(id: string) {

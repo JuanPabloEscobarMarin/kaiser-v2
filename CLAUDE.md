@@ -49,7 +49,7 @@ Frontend `.env`:
 VITE_API_URL=http://localhost:3000/api
 ```
 
-WhatsApp integration is fully optional — the app works without any `WHATSAPP_*` vars set.
+WhatsApp integration is fully optional — the app works without any `TWILIO_*` vars set.
 
 ## Architecture
 
@@ -87,7 +87,7 @@ Images are served via `/api/resources/images/:slug`.
 
 ### WhatsApp integration
 
-`src/services/whatsapp.service.ts` + `src/routes/whatsapp.routes.ts` + `src/controllers/whatsapp.controller.ts`. Meta webhook verification uses raw body (`req.rawBody` captured in `app.ts` before JSON parsing). All vars default to empty strings — the service silently no-ops when unconfigured.
+`src/services/whatsapp.service.ts` sends outbound text messages via the Twilio REST API (`fetch`, no SDK — same pattern as `email.service.ts`). No inbound webhook: messages are one-way (booking confirmation, reminders, campaigns), no interactive buttons. All `TWILIO_*` vars default to empty strings — the service silently no-ops when unconfigured. Customer phones are stored as 10-digit Colombian mobile numbers with no country code; `toWhatsAppAddress` prepends `+57` before sending.
 
 ### Frontend architecture
 

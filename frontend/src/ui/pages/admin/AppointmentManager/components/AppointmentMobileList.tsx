@@ -1,5 +1,11 @@
 import type { ChangeEvent } from "react";
 import type { Appointment } from "@/core/types";
+import {
+  appointmentDurationMin,
+  appointmentServicesLabel,
+  appointmentTotal,
+} from "@/lib/appointment";
+import { formatPrice } from "@/lib/format";
 
 const STATE_LABELS: Record<
   Appointment["state"],
@@ -61,9 +67,16 @@ export function AppointmentMobileList({
               </div>
               <div className="card-body py-3">
                 <h2 className="card-title text-base">
-                  {appointment.service?.name ?? "—"}
+                  {appointmentServicesLabel(appointment)}
                 </h2>
                 <div className="text-sm space-y-1">
+                  <div>
+                    <span className="opacity-60">Total:</span>{" "}
+                    {formatPrice(appointmentTotal(appointment))}
+                    <span className="opacity-60">
+                      {" "}· {appointmentDurationMin(appointment)} min
+                    </span>
+                  </div>
                   <div>
                     <span className="opacity-60">Cuándo:</span>{" "}
                     {formatDateTime(appointment.scheduledAt)}

@@ -1,55 +1,50 @@
-import crypto from "node:crypto";
 import { env } from "../config/env.ts";
 
 /**
- * Integración con la WhatsApp Cloud API (Meta). Todo es opcional: si faltan las
- * credenciales, `isConfigured()` es false y los envíos se omiten silenciosamente
- * (el webhook de verificación sigue funcionando solo con WHATSAPP_VERIFY_TOKEN).
+ * Los teléfonos de clientes se guardan sin indicativo (celular colombiano de
+ * 10 dígitos); Twilio exige el formato E.164 completo con prefijo "whatsapp:".
+ */
+const toWhatsAppAddress = (phone: string): string => {
+  const digits = phone.replace(/\D/g, "");
+  const withCountryCode = digits.length === 10 ? `57${digits}` : digits;
+  return `whatsapp:+${withCountryCode}`;
+};
+
+/**
+ * Envío de WhatsApp vía Twilio (HTTP API, sin SDK). Si faltan credenciales, el
+ * envío es un no-op silencioso — mismo patrón que email.service.ts.
  */
 export const WhatsAppService = {
-  /** ¿Hay credenciales para ENVIAR mensajes salientes? */
   isConfigured: () =>
-    Boolean(env.WHATSAPP_ACCESS_TOKEN && env.WHATSAPP_PHONE_NUMBER_ID),
+    Boolean(
+      env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_WHATSAPP_FROM,
+    ),
 
-  /**
-   * Valida la firma `X-Hub-Signature-256` que Meta adjunta a cada webhook,
-   * usando el App Secret. Si no hay App Secret configurado, no se puede validar
-   * y se rechaza por seguridad (salvo que tampoco haya secret → modo abierto dev).
-   */
-  verifySignature(rawBody: Buffer | undefined, signature: string | undefined): boolean {
-    // Sin App Secret no podemos verificar: lo permitimos (útil para los webhooks
-    // de prueba del panel de Meta antes de tener el secret en producción).
-    if (!env.WHATSAPP_APP_SECRET) return true;
-    if (!rawBody || !signature) return false;
-    const expected =
-      "sha256=" +
-      crypto.createHmac("sha256", env.WHATSAPP_APP_SECRET).update(rawBody).digest("hex");
-    try {
-      return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
-    } catch {
-      return false;
-    }
-  },
-
-  /** Envía un mensaje de texto libre (válido dentro de la ventana de 24h). */
   async sendText(to: string, body: string): Promise<void> {
     if (!this.isConfigured()) return;
-    const url = `https://graph.facebook.com/${env.WHATSAPP_API_VERSION}/${env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${env.WHATSAPP_ACCESS_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        to,
-        type: "text",
-        text: { body },
-      }),
+
+    const auth = Buffer.from(
+      `${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`,
+    ).toString("base64");
+    const params = new URLSearchParams({
+      To: toWhatsAppAddress(to),
+      From: env.TWILIO_WHATSAPP_FROM,
+      Body: body,
     });
+
+    const res = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}/Messages.json`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${auth}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: params,
+      },
+    );
     if (!res.ok) {
-      console.error("WhatsApp sendText falló:", res.status, await res.text());
+      console.error("WhatsApp (Twilio) sendText falló:", res.status, await res.text());
     }
   },
 };

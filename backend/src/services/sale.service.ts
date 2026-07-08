@@ -69,6 +69,9 @@ export const SaleService = {
         productId: product.id,
         quantity: it.quantity,
         unitPrice: String(unitPrice),
+        // Costo congelado al vender: cambiar el costo del producto después
+        // no altera la utilidad de ventas pasadas.
+        unitCost: String(money(Number(product.saleCost))),
         commissionPct: String(commissionPct),
         lineTotal: String(lineTotal),
         commissionAmount: String(commissionAmount),

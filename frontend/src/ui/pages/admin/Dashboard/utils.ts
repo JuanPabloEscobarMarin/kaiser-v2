@@ -1,5 +1,8 @@
 import type { Appointment, Employee } from "@/core/types";
 import type { Sale } from "@/core/api/sales.api";
+import { appointmentTotal } from "@/lib/appointment";
+import { appointmentCommission } from "@/lib/commission";
+import { businessNow, businessWallIso } from "@/lib/business-time";
 
 export type Preset = "TODAY" | "WEEK" | "MONTH" | "CUSTOM";
 
@@ -34,7 +37,9 @@ const startOfUtcMonth = (d: Date) => {
   return r;
 };
 
-export const presetRange = (preset: Preset, today = new Date()): DateRange => {
+// Anclado en la hora del negocio: con new Date() (UTC real), después de las
+// 7pm Bogotá "hoy" sería mañana.
+export const presetRange = (preset: Preset, today = businessNow()): DateRange => {
   const start = startOfUtcDay(today);
   switch (preset) {
     case "TODAY":
@@ -66,6 +71,14 @@ export const inRange = (iso: string, range: DateRange) => {
   const t = new Date(iso).getTime();
   return t >= range.from.getTime() && t < range.to.getTime();
 };
+
+/**
+ * Como inRange pero para instantes REALES (Sale.createdAt, deducciones):
+ * los convierte a hora de pared del negocio antes de comparar. Para
+ * scheduledAt (ya fake-UTC) usar inRange directo.
+ */
+export const inBusinessRange = (iso: string, range: DateRange) =>
+  inRange(businessWallIso(iso), range);
 
 export const filterByRange = (
   appointments: Appointment[],
@@ -106,11 +119,9 @@ export interface AggregateStats {
   confirmedRevenue: number;
 }
 
-const priceOf = (a: Appointment) => {
-  const price = Number(a.service?.price ?? 0);
-  const discount = Number(a.service?.discount ?? 0);
-  return Math.max(0, price - discount);
-};
+// Total real de la cita: contempla todos los servicios (multi-servicio),
+// combos y el precio final override. Espeja appointmentTotal / el cierre diario.
+const priceOf = (a: Appointment) => appointmentTotal(a);
 
 const durationOf = (a: Appointment) => {
   const minutes =
@@ -195,10 +206,14 @@ export const computePerEmployee = (
       current.scheduledMinutes += durationOf(a);
       current.expectedRevenue += price;
 
+      // Comisión: snapshot congelado si la cita ya finalizó; para citas
+      // agendadas, estimación sobre lo que se cobraría (mismas reglas que el
+      // cierre diario del backend).
       const emp = employeeMap.get(a.employeeId);
-      const svcAssignment = emp?.services?.find((s) => s.id === a.serviceId);
-      const commissionPct = Number(svcAssignment?.commission ?? 0);
-      current.estimatedCommission += (price * commissionPct) / 100;
+      const rates = new Map(
+        (emp?.services ?? []).map((s) => [s.id, Number(s.commission ?? 0)]),
+      );
+      current.estimatedCommission += appointmentCommission(a, rates);
     }
   }
 

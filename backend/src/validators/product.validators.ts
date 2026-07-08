@@ -6,8 +6,7 @@ export const createProductSchema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().max(300).optional().nullable(),
   price: decimalLike,
-  // Costo real (compra) y costo de venta (compra + gastos). Utilidad = price - saleCost.
-  realCost: decimalLike.optional(),
+  // Costo de venta (compra + gastos). Utilidad = price - saleCost.
   saleCost: decimalLike.optional(),
   stock: z.number().int().min(0).optional().default(0),
   commission: decimalLike.optional(),

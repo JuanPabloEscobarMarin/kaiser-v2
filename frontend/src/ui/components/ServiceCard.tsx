@@ -3,6 +3,7 @@ import type { Service } from "@/core/types";
 import { resourcesApi } from "@/core/api";
 import placeholder from "@/assets/placeholder-image.webp";
 import { formatPrice } from "@/lib/format";
+import { FadeImg } from "@/ui/components/FadeImg";
 
 interface Props {
   service: Service;
@@ -19,7 +20,7 @@ export function ServiceCard({ service }: Props) {
   return (
     <article className="card bg-base-100 border border-base-300/60 shadow-md overflow-hidden h-full flex flex-col transition-all duration-300 ease-out hover:scale-[1.03] hover:shadow-2xl hover:border-primary/40 hover:z-10 lg:group-hover/grid:opacity-55 lg:hover:!opacity-100 group/card">
       <figure className="aspect-video bg-base-200 overflow-hidden">
-        <img
+        <FadeImg
           src={imageUrl}
           alt={service.name}
           loading="lazy"
@@ -57,7 +58,7 @@ export function ServiceCard({ service }: Props) {
           </div>
           <button
             className="btn btn-primary btn-sm"
-            onClick={() => navigate(service.id)}
+            onClick={() => navigate(`/booking/${service.id}`)}
           >
             Reservar
           </button>

@@ -5,7 +5,6 @@ export interface Product {
   name: string;
   description: string | null;
   price: string;
-  realCost: string;
   saleCost: string;
   stock: number;
   commission: string;
@@ -18,7 +17,6 @@ export interface ProductInput {
   name: string;
   description?: string | null;
   price: string;
-  realCost?: string;
   saleCost?: string;
   stock?: number;
   commission?: string;

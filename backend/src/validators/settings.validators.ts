@@ -1,13 +1,46 @@
 import { z } from "zod";
 
+const SECTION_IDS = [
+  "features",
+  "services",
+  "howItWorks",
+  "team",
+  "gallery",
+  "testimonials",
+  "contact",
+] as const;
+
+// Los bloques/campos nuevos son .optional(): mergeHomeContent normaliza en
+// lectura, y así los PUT con el shape viejo siguen pasando validación.
 const homeContentSchema = z
   .object({
+    sections: z
+      .array(
+        z.object({
+          id: z.enum(SECTION_IDS),
+          enabled: z.boolean(),
+        }),
+      )
+      .max(12)
+      .optional(),
     hero: z.object({
       title: z.string().min(1).max(200),
       subtitle: z.string().max(500),
       primaryCta: z.string().min(1).max(50),
       secondaryCta: z.string().min(1).max(50),
+      overlayOpacity: z.number().min(0).max(0.9).optional(),
+      overlayGradient: z.boolean().optional(),
+      height: z.enum(["normal", "full"]).optional(),
+      align: z.enum(["center", "left"]).optional(),
     }),
+    promoBanner: z
+      .object({
+        enabled: z.boolean(),
+        text: z.string().max(200),
+        linkText: z.string().max(80),
+        linkUrl: z.string().max(300),
+      })
+      .optional(),
     features: z
       .array(
         z.object({
@@ -39,6 +72,27 @@ const homeContentSchema = z
       title: z.string().min(1).max(80),
       subtitle: z.string().max(200),
     }),
+    gallery: z
+      .object({
+        title: z.string().min(1).max(80),
+        subtitle: z.string().max(200),
+      })
+      .optional(),
+    testimonials: z
+      .object({
+        title: z.string().min(1).max(80),
+        subtitle: z.string().max(200),
+        items: z
+          .array(
+            z.object({
+              name: z.string().min(1).max(80),
+              text: z.string().min(1).max(400),
+              rating: z.number().int().min(1).max(5),
+            }),
+          )
+          .max(12),
+      })
+      .optional(),
     contact: z.object({
       title: z.string().min(1).max(80),
       subtitle: z.string().max(300),
@@ -50,6 +104,11 @@ const homeContentSchema = z
       subtitle: z.string().max(200),
       button: z.string().min(1).max(50),
     }),
+    whatsappButton: z
+      .object({
+        enabled: z.boolean(),
+      })
+      .optional(),
   })
   .optional();
 

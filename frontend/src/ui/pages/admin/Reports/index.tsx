@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { appointmentsApi } from "@/core/api";
-import type { Appointment } from "@/core/types";
+import { appointmentsApi, deductionsApi, employeesApi, salesApi } from "@/core/api";
+import type { Appointment, Employee } from "@/core/types";
+import type { Sale } from "@/core/api/sales.api";
+import type { Deduction } from "@/core/api/deductions.api";
 import {
   formatRange,
+  inBusinessRange,
   presetRange,
   type DateRange,
   type Preset,
@@ -17,6 +20,7 @@ import {
   summarize,
 } from "./utils";
 import { PeriodComparison } from "./components/PeriodComparison";
+import { EconomicReport } from "./components/EconomicReport";
 import { TopCustomers } from "./components/TopCustomers";
 import { ReturnRate } from "./components/ReturnRate";
 import { Heatmap } from "./components/Heatmap";
@@ -27,14 +31,26 @@ const RETURN_WINDOW_DAYS = 60;
 
 export function ReportsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [deductions, setDeductions] = useState<Deduction[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [preset, setPreset] = useState<Preset>("MONTH");
   const [range, setRange] = useState<DateRange>(() => presetRange("MONTH"));
 
   useEffect(() => {
-    appointmentsApi
-      .list()
-      .then(setAppointments)
+    Promise.all([
+      appointmentsApi.list(),
+      salesApi.list().catch(() => [] as Sale[]),
+      deductionsApi.list().catch(() => [] as Deduction[]),
+      employeesApi.list().catch(() => [] as Employee[]),
+    ])
+      .then(([a, s, d, e]) => {
+        setAppointments(a);
+        setSales(s);
+        setDeductions(d);
+        setEmployees(e);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -45,6 +61,16 @@ export function ReportsPage() {
   const previous = useMemo(
     () => filterByRange(appointments, previousRange(range)),
     [appointments, range],
+  );
+  // Ventas y deducciones del rango (por fecha de registro). createdAt es un
+  // instante real: se convierte a hora del negocio antes de comparar.
+  const currentSales = useMemo(
+    () => sales.filter((s) => inBusinessRange(s.createdAt, range)),
+    [sales, range],
+  );
+  const currentDeductions = useMemo(
+    () => deductions.filter((d) => inBusinessRange(d.createdAt, range)),
+    [deductions, range],
   );
 
   const summaryCurrent = useMemo(() => summarize(current), [current]);
@@ -78,6 +104,14 @@ export function ReportsPage() {
         <StatsSkeleton count={6} />
       ) : (
         <>
+          <EconomicReport
+            appointments={current}
+            sales={currentSales}
+            deductions={currentDeductions}
+            employees={employees}
+            range={range}
+          />
+
           <PeriodComparison
             current={summaryCurrent}
             previous={summaryPrevious}

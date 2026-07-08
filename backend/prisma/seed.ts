@@ -82,6 +82,28 @@ const homeContent = {
     subtitle: "Reserva hoy en AB Hair Studio, sin necesidad de crear cuenta.",
     button: "Reservar ahora",
   },
+  testimonials: {
+    title: "Lo que dicen nuestros clientes",
+    subtitle: "Opiniones reales de quienes ya pasaron por el estudio",
+    items: [
+      {
+        name: "Laura Gómez",
+        text: "El balayage me quedó espectacular y la atención fue de 10. Reservar en línea fue rapidísimo.",
+        rating: 5,
+      },
+      {
+        name: "Carlos Restrepo",
+        text: "Corte y barba impecables. Llegué a mi hora y pasé directo, sin filas.",
+        rating: 5,
+      },
+      {
+        name: "Valentina Ruiz",
+        text: "Me asesoraron súper bien con el color. Volveré sin duda.",
+        rating: 4,
+      },
+    ],
+  },
+  whatsappButton: { enabled: true },
 };
 
 async function main() {

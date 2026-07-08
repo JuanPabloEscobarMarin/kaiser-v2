@@ -9,6 +9,11 @@ const schema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 chars"),
   CORS_ORIGIN: z.string().default("http://localhost:5173"),
+  // Zona horaria del negocio (IANA). Las horas de citas se guardan como
+  // "hora de pared" en UTC literal (ver lib/business-hours.ts); esta zona
+  // define qué significa "ahora" al comparar contra esas horas, sin importar
+  // la zona del servidor (Vercel corre en UTC real).
+  BUSINESS_TIMEZONE: z.string().default("America/Bogota"),
   // Saltos de proxy confiables delante de la app (p. ej. "1" detrás de un
   // reverse proxy). Vacío = sin proxy. Necesario para que el rate limit vea
   // la IP real del cliente y no la del proxy.
@@ -21,14 +26,12 @@ const schema = z.object({
   // "local" → local filesystem under LOCAL_STORAGE_DIR (offline dev).
   STORAGE_DRIVER: z.enum(["s3", "local"]).default("s3"),
   LOCAL_STORAGE_DIR: z.string().default("uploads"),
-  // WhatsApp Cloud API (Meta). Todas opcionales: si no están, la integración
-  // queda inactiva y la app funciona igual.
-  WHATSAPP_VERIFY_TOKEN: z.string().default(""),
-  WHATSAPP_APP_SECRET: z.string().default(""),
-  WHATSAPP_ACCESS_TOKEN: z.string().default(""),
-  WHATSAPP_PHONE_NUMBER_ID: z.string().default(""),
-  WHATSAPP_API_VERSION: z.string().default("v21.0"),
-  WHATSAPP_TEMPLATE_CONFIRM: z.string().default(""),
+  // WhatsApp vía Twilio. Todas opcionales: si no están, la integración queda
+  // inactiva (no-op) y la app funciona igual.
+  TWILIO_ACCOUNT_SID: z.string().default(""),
+  TWILIO_AUTH_TOKEN: z.string().default(""),
+  // Remitente con prefijo "whatsapp:", ej: "whatsapp:+14155238886".
+  TWILIO_WHATSAPP_FROM: z.string().default(""),
   // URL pública del frontend, para los enlaces de reagenda.
   APP_PUBLIC_URL: z.string().default(""),
   // Correo transaccional/marketing (Resend). Opcionales: si no están, el envío

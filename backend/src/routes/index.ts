@@ -18,7 +18,6 @@ import inventoryRoutes from "./inventory.routes.ts";
 import productRoutes from "./product.routes.ts";
 import saleRoutes from "./sale.routes.ts";
 import employeePortalRoutes from "./employee-portal.routes.ts";
-import whatsappRoutes from "./whatsapp.routes.ts";
 import campaignRoutes from "./campaign.routes.ts";
 import cronRoutes from "./cron.routes.ts";
 
@@ -56,7 +55,6 @@ router.use("/inventory", inventoryRoutes);
 router.use("/products", productRoutes);
 router.use("/sales", saleRoutes);
 router.use("/employee", employeePortalRoutes);
-router.use("/whatsapp", whatsappRoutes);
 router.use("/campaigns", campaignRoutes);
 router.use("/cron", cronRoutes);
 

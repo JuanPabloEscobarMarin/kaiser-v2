@@ -28,6 +28,7 @@ export interface UpdateAppointmentData {
   endsAt?: Date;
   state?: AppointmentState;
   finalPrice?: string | null;
+  commissionAmount?: string | null;
   notes?: string | null;
 }
 
@@ -36,7 +37,15 @@ const fullInclude = {
   employee: true,
   services: {
     include: {
-      service: { select: { id: true, name: true, price: true, duration: true } },
+      service: {
+        select: {
+          id: true,
+          name: true,
+          price: true,
+          duration: true,
+          discount: true,
+        },
+      },
     },
   },
   package: true,

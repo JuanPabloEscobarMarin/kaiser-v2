@@ -1,8 +1,20 @@
 import * as XLSX from "xlsx";
 import type { Appointment } from "@/core/types";
+import {
+  appointmentServices,
+  appointmentServicesLabel,
+  appointmentTotal,
+} from "@/lib/appointment";
 import type { DateRange } from "../Dashboard/utils";
 
 // ─────────── Date helpers ──────────────────────────────────────────────────
+//
+// ⚠️ Todo lo que opera sobre scheduledAt (inRange, heatmap, revenueRows,
+// slice(0,10)) usa lógica UTC A PROPÓSITO: scheduledAt se guarda como hora de
+// pared del negocio en "fake-UTC" (ver backend/src/lib/business-hours.ts), así
+// que ya representa el día/hora Bogotá. NO "corregir" a hora local ni aplicar
+// businessWallIso aquí — eso es solo para instantes reales como createdAt de
+// ventas/deducciones (ver @/lib/business-time).
 
 export const previousRange = (range: DateRange): DateRange => {
   const length = range.to.getTime() - range.from.getTime();
@@ -22,16 +34,10 @@ export const filterByRange = (apts: Appointment[], range: DateRange) =>
 
 // ─────────── Money / time helpers ──────────────────────────────────────────
 
-const priceOf = (a: Appointment) => {
-  // Precio variable: si se capturó un precio final al cerrar la cita, prima
-  // sobre el precio base del servicio.
-  if (a.finalPrice != null && a.finalPrice !== "") {
-    return Math.max(0, Number(a.finalPrice));
-  }
-  const price = Number(a.service?.price ?? 0);
-  const discount = Number(a.service?.discount ?? 0);
-  return Math.max(0, price - discount);
-};
+// Total de la cita: precio final (override / precio variable) → combo → suma de
+// todos los servicios con descuento. Contempla multi-servicio, no solo el
+// principal. Ver appointmentTotal.
+const priceOf = (a: Appointment) => Math.max(0, appointmentTotal(a));
 
 export { formatPrice } from "@/lib/format";
 
@@ -247,15 +253,30 @@ export const downloadXlsx = (
   downloadWorkbook(filename, wb);
 };
 
+/** Libro con varias hojas (p. ej. informe económico: resumen + detalles). */
+export const downloadXlsxMulti = (
+  filename: string,
+  sheets: { name: string; rows: Record<string, unknown>[] }[],
+): void => {
+  const wb = XLSX.utils.book_new();
+  for (const s of sheets) {
+    XLSX.utils.book_append_sheet(wb, sheetFromRows(s.rows, s.name), s.name);
+  }
+  downloadWorkbook(filename, wb);
+};
+
 // ─────────── Export builders (rows for XLSX) ───────────────────────────────
 
 export const appointmentsRows = (apts: Appointment[]) =>
   apts.map((a) => ({
     fecha: a.scheduledAt,
     estado: a.state,
-    servicio: a.service?.name ?? "",
-    precio_servicio: Number(a.service?.price ?? 0),
-    descuento: Number(a.service?.discount ?? 0),
+    servicio: appointmentServicesLabel(a),
+    precio_servicio: priceOf(a),
+    descuento: appointmentServices(a).reduce(
+      (sum, s) => sum + Number(s.discount ?? 0),
+      0,
+    ),
     profesional: a.employee?.fullName ?? "",
     cliente: a.booking?.customer?.fullName ?? "",
     correo: a.booking?.customer?.email ?? "",

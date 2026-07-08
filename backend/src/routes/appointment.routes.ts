@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { AppointmentController } from "../controllers/appointment.controller.ts";
 import { asyncHandler } from "../middlewares/async-handler.ts";
-import { requireAdmin } from "../middlewares/auth.middleware.ts";
+import { optionalAuth, requireAdmin } from "../middlewares/auth.middleware.ts";
 import {
   idParamSchema,
   validate,
@@ -17,6 +17,9 @@ const router = Router();
 
 router.get(
   "/availability",
+  // optionalAuth: si quien consulta es admin, availability no filtra por los
+  // servicios asignados al empleado (mismo bypass que /admin-book).
+  asyncHandler(optionalAuth),
   validate(availabilityQuerySchema, "query"),
   asyncHandler(AppointmentController.availability),
 );

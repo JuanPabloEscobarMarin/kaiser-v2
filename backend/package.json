@@ -13,6 +13,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:reset": "prisma migrate reset",
     "seed": "ts-node prisma/seed.ts",
+    "backfill:snapshots": "ts-node scripts/backfill-snapshots.ts",
     "db:current": "bash scripts/use-db.sh current",
     "db:local": "bash scripts/use-db.sh local",
     "db:supabase": "bash scripts/use-db.sh supabase",

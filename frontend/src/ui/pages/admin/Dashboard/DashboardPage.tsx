@@ -19,7 +19,7 @@ import {
   filterByRange,
   formatPrice,
   formatRange,
-  inRange,
+  inBusinessRange,
   presetRange,
   type DateRange,
   type Preset,
@@ -60,7 +60,8 @@ export function DashboardPage() {
     [appointments, range],
   );
   const filteredSales = useMemo(
-    () => sales.filter((s) => inRange(s.createdAt, range)),
+    // createdAt es un instante real: convertir a hora del negocio al filtrar.
+    () => sales.filter((s) => inBusinessRange(s.createdAt, range)),
     [sales, range],
   );
   const productRevenue = useMemo(

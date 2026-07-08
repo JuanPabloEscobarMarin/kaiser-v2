@@ -13,6 +13,12 @@ import type {
   Employee,
   Service,
 } from "@/core/types";
+import {
+  appointmentDurationMin,
+  appointmentServices,
+  appointmentTotal,
+} from "@/lib/appointment";
+import { formatPrice } from "@/lib/format";
 import { useNotify } from "@/ui/hooks/useNotify";
 
 interface Props {
@@ -132,6 +138,8 @@ export function EditAppointmentDrawer({
   if (!appointment) return null;
 
   const customer = appointment.booking?.customer;
+  const apptServices = appointmentServices(appointment);
+  const isMultiService = apptServices.length > 1 || Boolean(appointment.package);
   const selectedService = services.find((s) => s.id === serviceId);
   const isVariable = selectedService?.variablePrice ?? false;
   const dirtyState = state !== appointment.state;
@@ -235,8 +243,56 @@ export function EditAppointmentDrawer({
               </div>
             </div>
 
+            {/* Resumen de servicios de la cita (combo / multi-servicio) */}
+            <div className="card bg-base-200">
+              <div className="card-body p-4">
+                <h3 className="font-semibold text-sm opacity-70">
+                  {appointment.package
+                    ? "Combo"
+                    : apptServices.length > 1
+                      ? "Servicios"
+                      : "Servicio"}
+                </h3>
+                {appointment.package ? (
+                  <div className="text-sm font-medium">
+                    {appointment.package.name}
+                  </div>
+                ) : (
+                  <ul className="text-sm space-y-0.5">
+                    {apptServices.map((s) => (
+                      <li key={s.id} className="flex justify-between gap-3">
+                        <span>{s.name}</span>
+                        <span className="opacity-60">
+                          {s.duration} min · {formatPrice(s.price)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <div className="flex justify-between text-sm font-semibold border-t border-base-300 mt-1 pt-1">
+                  <span>Total · {appointmentDurationMin(appointment)} min</span>
+                  <span className="text-primary">
+                    {formatPrice(appointmentTotal(appointment))}
+                  </span>
+                </div>
+              </div>
+            </div>
+
             <fieldset>
-              <legend className="font-semibold mb-1">Servicio</legend>
+              <legend className="font-semibold mb-1">
+                {readOnly
+                  ? "Servicio"
+                  : isMultiService
+                    ? "Reprogramar / estado"
+                    : "Servicio"}
+              </legend>
+              {!readOnly && isMultiService && (
+                <p className="text-xs opacity-60 mb-1">
+                  Esta cita tiene varios servicios. Editar aquí sirve para
+                  reprogramar o cambiar el estado; el detalle de servicios se
+                  conserva.
+                </p>
+              )}
               <select
                 className="select select-bordered w-full"
                 value={serviceId}

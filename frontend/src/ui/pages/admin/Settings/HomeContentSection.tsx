@@ -1,5 +1,7 @@
 import type { HomeContent } from "@/core/types";
 import { EmojiPicker } from "@/ui/components/EmojiPicker";
+import { SectionOrderEditor } from "./SectionOrderEditor";
+import { TestimonialsEditor } from "./TestimonialsEditor";
 
 interface Props {
   value: HomeContent;
@@ -101,6 +103,19 @@ export function HomeContentSection({ value, onChange }: Props) {
         </p>
 
         <div className="space-y-3 mt-2">
+          {/* Orden y visibilidad de secciones */}
+          <Group title="Secciones y orden" defaultOpen>
+            <p className="text-xs opacity-60">
+              Reordena las secciones intermedias de la página y oculta las que
+              no quieras mostrar. El hero y la llamada a la acción final son
+              fijos.
+            </p>
+            <SectionOrderEditor
+              value={value.sections}
+              onChange={(next) => onChange({ ...value, sections: next })}
+            />
+          </Group>
+
           {/* Hero */}
           <Group title="Sección principal (hero)" defaultOpen>
             <Field
@@ -124,6 +139,116 @@ export function HomeContentSection({ value, onChange }: Props) {
                 label="Texto botón secundario"
                 value={value.hero.secondaryCta}
                 onChange={(v) => update("hero", { secondaryCta: v })}
+              />
+            </div>
+
+            <div className="divider text-xs">Apariencia del hero</div>
+
+            <fieldset>
+              <legend className="text-sm font-medium mb-1">
+                Oscurecido de la imagen ({Math.round(value.hero.overlayOpacity * 100)}%)
+              </legend>
+              <input
+                type="range"
+                min={0}
+                max={90}
+                step={5}
+                className="range range-sm range-primary"
+                value={Math.round(value.hero.overlayOpacity * 100)}
+                onChange={(e) =>
+                  update("hero", {
+                    overlayOpacity: Number(e.target.value) / 100,
+                  })
+                }
+              />
+              <p className="text-xs opacity-60 mt-1">
+                Un velo oscuro sobre la imagen mejora la legibilidad del texto.
+              </p>
+            </fieldset>
+
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                className="toggle toggle-sm toggle-primary"
+                checked={value.hero.overlayGradient}
+                onChange={(e) =>
+                  update("hero", { overlayGradient: e.target.checked })
+                }
+              />
+              <span className="text-sm">
+                Degradado (más oscuro hacia abajo)
+              </span>
+            </label>
+
+            <div className="grid sm:grid-cols-2 gap-3">
+              <fieldset>
+                <legend className="text-sm font-medium mb-1">Altura</legend>
+                <select
+                  className="select select-bordered w-full"
+                  value={value.hero.height}
+                  onChange={(e) =>
+                    update("hero", {
+                      height: e.target.value as HomeContent["hero"]["height"],
+                    })
+                  }
+                >
+                  <option value="normal">Normal</option>
+                  <option value="full">Pantalla completa</option>
+                </select>
+              </fieldset>
+              <fieldset>
+                <legend className="text-sm font-medium mb-1">
+                  Alineación del texto
+                </legend>
+                <select
+                  className="select select-bordered w-full"
+                  value={value.hero.align}
+                  onChange={(e) =>
+                    update("hero", {
+                      align: e.target.value as HomeContent["hero"]["align"],
+                    })
+                  }
+                >
+                  <option value="center">Centrado</option>
+                  <option value="left">Izquierda</option>
+                </select>
+              </fieldset>
+            </div>
+          </Group>
+
+          {/* Banner promocional */}
+          <Group title="Banner promocional">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                className="toggle toggle-sm toggle-primary"
+                checked={value.promoBanner.enabled}
+                onChange={(e) =>
+                  update("promoBanner", { enabled: e.target.checked })
+                }
+              />
+              <span className="text-sm">
+                Mostrar barra de anuncio arriba del hero
+              </span>
+            </label>
+            <Field
+              label="Texto del anuncio"
+              value={value.promoBanner.text}
+              onChange={(v) => update("promoBanner", { text: v })}
+              placeholder="✨ 20% de descuento en tu primera visita"
+            />
+            <div className="grid sm:grid-cols-2 gap-3">
+              <Field
+                label="Texto del enlace (opcional)"
+                value={value.promoBanner.linkText}
+                onChange={(v) => update("promoBanner", { linkText: v })}
+                placeholder="Reservar ahora"
+              />
+              <Field
+                label="URL del enlace"
+                value={value.promoBanner.linkUrl}
+                onChange={(v) => update("promoBanner", { linkUrl: v })}
+                placeholder="/booking o https://..."
               />
             </div>
           </Group>
@@ -222,6 +347,38 @@ export function HomeContentSection({ value, onChange }: Props) {
             />
           </Group>
 
+          {/* Galería */}
+          <Group title="Encabezado: Galería">
+            <Field
+              label="Título"
+              value={value.gallery.title}
+              onChange={(v) => update("gallery", { title: v })}
+            />
+            <Field
+              label="Subtítulo"
+              value={value.gallery.subtitle}
+              onChange={(v) => update("gallery", { subtitle: v })}
+            />
+          </Group>
+
+          {/* Testimonios */}
+          <Group title="Testimonios">
+            <Field
+              label="Título"
+              value={value.testimonials.title}
+              onChange={(v) => update("testimonials", { title: v })}
+            />
+            <Field
+              label="Subtítulo"
+              value={value.testimonials.subtitle}
+              onChange={(v) => update("testimonials", { subtitle: v })}
+            />
+            <TestimonialsEditor
+              value={value.testimonials.items}
+              onChange={(items) => update("testimonials", { items })}
+            />
+          </Group>
+
           {/* Contacto */}
           <Group title="Sección de contacto">
             <Field
@@ -267,6 +424,27 @@ export function HomeContentSection({ value, onChange }: Props) {
               value={value.finalCta.button}
               onChange={(v) => update("finalCta", { button: v })}
             />
+          </Group>
+
+          {/* Botón flotante de WhatsApp */}
+          <Group title="Botón flotante de WhatsApp">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                className="toggle toggle-sm toggle-primary"
+                checked={value.whatsappButton.enabled}
+                onChange={(e) =>
+                  update("whatsappButton", { enabled: e.target.checked })
+                }
+              />
+              <span className="text-sm">
+                Mostrar botón flotante de WhatsApp en la página de inicio
+              </span>
+            </label>
+            <p className="text-xs opacity-60">
+              Usa el número de WhatsApp configurado en la sección
+              &ldquo;Contacto&rdquo;.
+            </p>
           </Group>
         </div>
       </div>

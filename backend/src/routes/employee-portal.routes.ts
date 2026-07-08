@@ -9,9 +9,11 @@ import { EmployeeBlocksRepository } from "../repositories/employee-blocks.reposi
 import { AppointmentRepository } from "../repositories/appointment.repository.ts";
 import { ProductRepository } from "../repositories/product.repository.ts";
 import { SaleService } from "../services/sale.service.ts";
+import { AppointmentService } from "../services/appointment.service.ts";
 import { NotificationService } from "../services/notification.service.ts";
 import { NotificationRepository } from "../repositories/notification.repository.ts";
 import { DailyCloseService } from "../services/daily-close.service.ts";
+import { businessTodayYmd } from "../lib/business-time.ts";
 import { prisma } from "../lib/prisma.ts";
 import {
   ForbiddenException,
@@ -73,6 +75,22 @@ router.get(
       orderBy: { scheduledAt: "desc" },
       include: {
         service: true,
+        // Servicios múltiples (multi-servicio) + combo: sin esto la agenda del
+        // empleado solo mostraría el servicio principal.
+        services: {
+          include: {
+            service: {
+              select: {
+                id: true,
+                name: true,
+                price: true,
+                duration: true,
+                discount: true,
+              },
+            },
+          },
+        },
+        package: true,
         booking: { include: { customer: true } },
       },
     });
@@ -102,7 +120,9 @@ router.patch(
     if (appointment.employeeId !== emp.id) {
       throw new ForbiddenException("Esta cita no es tuya");
     }
-    const updated = await AppointmentRepository.update(appointment.id, {
+    // Vía la capa de servicio para que el snapshot de comisión se sincronice
+    // (payload solo estado/precio: no recalcula endsAt ni valida conflictos).
+    const updated = await AppointmentService.update(appointment.id, {
       state: req.body.state,
       ...(req.body.finalPrice !== undefined
         ? { finalPrice: req.body.finalPrice }
@@ -133,9 +153,8 @@ router.get(
   "/me/daily-close",
   asyncHandler(async (req, res) => {
     const emp = await getMyEmployee(req);
-    const date = String(
-      req.query.date ?? new Date().toISOString().slice(0, 10),
-    );
+    // Hoy en hora del negocio: toISOString() daría mañana después de las 7pm.
+    const date = String(req.query.date ?? businessTodayYmd());
     res.json(await DailyCloseService.compute(emp.id, date));
   }),
 );

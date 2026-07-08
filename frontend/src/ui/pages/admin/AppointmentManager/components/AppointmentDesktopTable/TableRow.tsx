@@ -1,4 +1,10 @@
 import type { Appointment } from "@/core/types";
+import {
+  appointmentDurationMin,
+  appointmentServicesLabel,
+  appointmentTotal,
+} from "@/lib/appointment";
+import { formatPrice } from "@/lib/format";
 
 const STATE_LABELS: Record<
   Appointment["state"],
@@ -50,7 +56,13 @@ export function TableRow({
         />
       </td>
       <td>{formatDateTime(appointment.scheduledAt)}</td>
-      <td>{appointment.service?.name ?? "—"}</td>
+      <td>
+        <div>{appointmentServicesLabel(appointment)}</div>
+        <div className="text-xs opacity-60">
+          {appointmentDurationMin(appointment)} min ·{" "}
+          {formatPrice(appointmentTotal(appointment))}
+        </div>
+      </td>
       <td>{appointment.employee?.fullName ?? "—"}</td>
       <td>
         <div>{customer?.fullName ?? "—"}</div>

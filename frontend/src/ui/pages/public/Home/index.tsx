@@ -1,26 +1,44 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
-import heroDefault from "@/assets/hero-barbershop.jpg";
-import {
-  employeesApi,
-  galleryApi,
-  resourcesApi,
-  servicesApi,
-  settingsApi,
-} from "@/core/api";
-import type { BusinessSettings, Employee, Service } from "@/core/types";
+import { employeesApi, galleryApi, servicesApi } from "@/core/api";
+import type { Employee, Service } from "@/core/types";
 import type { GalleryImage } from "@/core/api/gallery.api";
-import { HOME_CONTENT_DEFAULTS } from "@/core/branding/home-content";
+import {
+  HOME_CONTENT_DEFAULTS,
+  type SectionId,
+} from "@/core/branding/home-content";
+import { useBranding } from "@/ui/contexts/branding/context";
 import Navbar from "@/ui/layouts/components/NavBar";
-import { ServiceCard } from "@/ui/components/ServiceCard";
-import { Reveal } from "@/ui/components/Reveal";
-import { SocialLinks } from "@/ui/components/SocialLinks";
-import { initials } from "@/lib/format";
+import type { SectionCtx } from "./sections/types";
+import { Hero } from "./sections/Hero";
+import { PromoBanner } from "./sections/PromoBanner";
+import { Features } from "./sections/Features";
+import { ServicesSection } from "./sections/ServicesSection";
+import { HowItWorks } from "./sections/HowItWorks";
+import { Team } from "./sections/Team";
+import { GallerySection } from "./sections/GallerySection";
+import { Testimonials } from "./sections/Testimonials";
+import { Contact } from "./sections/Contact";
+import { FinalCta } from "./sections/FinalCta";
+import { Footer } from "./sections/Footer";
+import { WhatsAppFloat } from "./sections/WhatsAppFloat";
+
+/** Secciones intermedias reordenables desde admin → Configuración. */
+const SECTION_COMPONENTS: Record<SectionId, React.FC<SectionCtx>> = {
+  features: Features,
+  services: ServicesSection,
+  howItWorks: HowItWorks,
+  team: Team,
+  gallery: GallerySection,
+  testimonials: Testimonials,
+  contact: Contact,
+};
 
 export function HomePage() {
+  // Settings llegan del BrandingProvider (con cache en sessionStorage):
+  // evita un segundo fetch y el flash de contenido default.
+  const { business } = useBranding();
   const [services, setServices] = useState<Service[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [business, setBusiness] = useState<BusinessSettings | null>(null);
   const [gallery, setGallery] = useState<GalleryImage[]>([]);
 
   useEffect(() => {
@@ -32,10 +50,6 @@ export function HomePage() {
       .list()
       .then((arr) => setEmployees(arr.filter((e) => e.state)))
       .catch(() => setEmployees([]));
-    settingsApi
-      .get()
-      .then(setBusiness)
-      .catch(() => setBusiness(null));
     galleryApi
       .list()
       .then(setGallery)
@@ -43,406 +57,37 @@ export function HomePage() {
   }, []);
 
   const c = business?.homeContent ?? HOME_CONTENT_DEFAULTS;
+  // Guard por si un cache viejo de settings no trae el shape nuevo.
+  const sections = c.sections ?? HOME_CONTENT_DEFAULTS.sections;
 
-  const formatHours = (open: string, close: string, closed: boolean) =>
-    closed ? "Cerrado" : `${open} – ${close}`;
-
-  const hours = business
-    ? [
-        {
-          days: "Lunes – Viernes",
-          time: formatHours(
-            business.openTimeWeekday,
-            business.closeTimeWeekday,
-            business.closedWeekday,
-          ),
-        },
-        {
-          days: "Sábados",
-          time: formatHours(
-            business.openTimeSaturday,
-            business.closeTimeSaturday,
-            business.closedSaturday,
-          ),
-        },
-        {
-          days: "Domingos",
-          time: formatHours(
-            business.openTimeSunday,
-            business.closeTimeSunday,
-            business.closedSunday,
-          ),
-        },
-      ]
-    : [];
-
-  const heroImage =
-    (business?.heroImageSlug
-      ? resourcesApi.imageUrl(business.heroImageSlug)
-      : null) ?? heroDefault;
-
-  const logoUrl = business?.logoSlug
-    ? resourcesApi.imageUrl(business.logoSlug)
-    : null;
+  const ctx: SectionCtx = { c, business, services, employees, gallery };
+  const isEnabled = (id: SectionId) =>
+    sections.some((s) => s.id === id && s.enabled);
 
   return (
     <div className="bg-base-200">
       <Navbar />
+      <PromoBanner c={c} />
+      <Hero
+        c={c}
+        business={business}
+        secondaryCtaHref={isEnabled("services") ? "#servicios" : "/booking"}
+      />
 
-      {/* HERO */}
-      <section
-        className="hero min-h-[70vh] relative"
-        style={{
-          backgroundImage: `linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url(${heroImage})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
-      >
-        <div className="hero-content text-neutral-content text-center max-w-2xl">
-          <div>
-            {logoUrl && (
-              <img
-                src={logoUrl}
-                alt={business?.name ?? "Logo"}
-                className="h-16 md:h-20 max-w-[220px] object-contain mx-auto mb-5 animate-logo-float drop-shadow-lg"
-              />
-            )}
-            <h1 className="mb-4 text-4xl md:text-6xl font-bold">
-              {c.hero.title}
-            </h1>
-            <p className="mb-6 text-lg text-white/90">{c.hero.subtitle}</p>
-            <div className="flex flex-wrap justify-center gap-3">
-              <Link to="/booking" className="btn btn-primary btn-lg">
-                {c.hero.primaryCta}
-              </Link>
-              <a href="#servicios" className="btn btn-ghost btn-lg text-white">
-                {c.hero.secondaryCta}
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
+      {sections
+        .filter((s) => s.enabled)
+        .map((s) => {
+          const Section = SECTION_COMPONENTS[s.id];
+          return Section ? <Section key={s.id} {...ctx} /> : null;
+        })}
 
-      {/* FEATURES */}
-      <section className="container mx-auto px-4 py-12 max-w-5xl">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 group/grid">
-          {c.features.map((f, i) => (
-            <Reveal key={i} index={i} spotlight>
-              <Feature title={f.title} desc={f.description} icon={f.icon} />
-            </Reveal>
-          ))}
-        </div>
-      </section>
-
-      {/* SERVICIOS */}
-      <section id="servicios" className="container mx-auto px-4 py-12 max-w-5xl">
-        <div className="flex items-end justify-between mb-6 flex-wrap gap-2">
-          <div>
-            <h2 className="text-3xl font-bold">{c.services.title}</h2>
-            <p className="text-base-content/70">{c.services.subtitle}</p>
-          </div>
-          <Link to="/booking" className="btn btn-ghost btn-sm">
-            Ver todos →
-          </Link>
-        </div>
-
-        {services.length === 0 ? (
-          <p className="text-center opacity-60 py-6">Cargando servicios...</p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 group/grid">
-            {services.map((s, i) => (
-              <Reveal key={s.id} index={i} spotlight className="h-full">
-                <ServiceCard service={s} />
-              </Reveal>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* CÓMO FUNCIONA */}
-      <section className="bg-base-100 border-y border-base-300">
-        <div className="container mx-auto px-4 py-12 max-w-5xl">
-          <h2 className="text-3xl font-bold text-center mb-2">
-            {c.howItWorks.title}
-          </h2>
-          <p className="text-center text-base-content/70 mb-10">
-            {c.howItWorks.subtitle}
-          </p>
-
-          <ul className="steps steps-vertical sm:steps-horizontal w-full">
-            {c.howItWorks.steps.map((step, i) => (
-              <li
-                key={i}
-                className="step step-primary"
-                data-content={String(i + 1)}
-              >
-                <Reveal index={i} className="px-3 pt-2 max-w-[220px]">
-                  <h3 className="font-semibold mb-1">{step.title}</h3>
-                  <p className="text-xs opacity-70">{step.description}</p>
-                </Reveal>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      {/* EQUIPO */}
-      {employees.length > 0 && (
-        <section className="container mx-auto px-4 py-12 max-w-5xl">
-          <h2 className="text-3xl font-bold mb-2">{c.team.title}</h2>
-          <p className="text-base-content/70 mb-6">{c.team.subtitle}</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 group/grid">
-            {employees.map((emp, i) => (
-              <Reveal key={emp.id} index={i} spotlight className="h-full">
-                <div className="card bg-base-100 border border-base-300/60 shadow items-center p-5 text-center h-full transition-all duration-300 ease-out hover:scale-[1.04] hover:shadow-2xl hover:border-primary/40 hover:z-10 lg:group-hover/grid:opacity-55 lg:hover:!opacity-100 group/card">
-                  {emp.urlImage ? (
-                    <div className="avatar">
-                      <div className="w-20 rounded-full transition-transform duration-300 group-hover/card:scale-110">
-                        <img
-                          src={resourcesApi.imageUrl(emp.urlImage) ?? undefined}
-                          alt={emp.fullName}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="avatar avatar-placeholder">
-                      <div className="bg-neutral text-neutral-content w-20 rounded-full transition-transform duration-300 group-hover/card:scale-110">
-                        <span className="text-xl font-bold">
-                          {initials(emp.fullName)}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                  <h3 className="font-semibold mt-3">{emp.fullName}</h3>
-                  <p className="text-xs opacity-60">Estilista</p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* GALERÍA */}
-      {gallery.length > 0 && (
-        <section className="container mx-auto px-4 py-12 max-w-5xl">
-          <Reveal>
-            <h2 className="text-3xl font-bold text-center mb-2">Galería</h2>
-            <p className="text-center text-base-content/70 mb-8">
-              Algunos de nuestros trabajos
-            </p>
-          </Reveal>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {gallery.map((img, i) => (
-              <Reveal key={img.id} index={i}>
-                <figure className="overflow-hidden rounded-box group aspect-square shadow-sm hover:shadow-xl transition-shadow duration-300">
-                  <img
-                    src={resourcesApi.imageUrl(img.slug) ?? undefined}
-                    alt={img.caption ?? "Trabajo de la barbería"}
-                    loading="lazy"
-                    className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-110"
-                  />
-                </figure>
-              </Reveal>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* CONTACTO */}
-      <section
-        id="contacto"
-        className="bg-gradient-to-br from-primary/10 via-base-100 to-secondary/10 border-y border-base-300"
-      >
-        <div className="container mx-auto px-4 py-14 max-w-5xl">
-          <div className="grid lg:grid-cols-2 gap-8">
-            <Reveal index={0}>
-              <h2 className="text-3xl font-bold mb-3">{c.contact.title}</h2>
-              <p className="text-base-content/70 mb-6 max-w-md">
-                {c.contact.subtitle}
-              </p>
-
-              <div className="space-y-4">
-                {business && (
-                  <>
-                    <ContactRow
-                      icon="📞"
-                      label="Teléfono"
-                      value={business.phone}
-                      href={`tel:${business.phone.replace(/\s/g, "")}`}
-                    />
-                    <ContactRow
-                      icon="💬"
-                      label="WhatsApp"
-                      value="Escríbenos directo"
-                      href={`https://wa.me/${business.whatsapp}`}
-                      external
-                    />
-                    <ContactRow
-                      icon="✉️"
-                      label="Email"
-                      value={business.email}
-                      href={`mailto:${business.email}`}
-                    />
-                    <ContactRow
-                      icon="📍"
-                      label="Dirección"
-                      value={business.address}
-                      href={`https://maps.google.com/?q=${encodeURIComponent(business.address)}`}
-                      external
-                    />
-                  </>
-                )}
-                <SocialLinks
-                  business={business}
-                  className="flex items-center gap-4 mt-4 text-primary"
-                />
-              </div>
-            </Reveal>
-
-            <Reveal index={1}>
-              <div className="card bg-base-100 shadow-lg transition-shadow duration-300 hover:shadow-2xl">
-                <div className="card-body">
-                  <h3 className="font-bold text-lg mb-3">
-                    {c.contact.hoursTitle}
-                  </h3>
-                  {hours.length === 0 ? (
-                    <ul className="space-y-2" aria-hidden="true">
-                      {Array.from({ length: 3 }).map((_, i) => (
-                        <li
-                          key={i}
-                          className="flex justify-between items-center py-1.5 border-b border-base-300 last:border-b-0"
-                        >
-                          <div className="h-4 w-28 bg-base-300 rounded animate-pulse" />
-                          <div className="h-4 w-20 bg-base-300 rounded animate-pulse" />
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <ul className="space-y-2">
-                      {hours.map((h) => (
-                        <li
-                          key={h.days}
-                          className="flex justify-between items-center py-1.5 border-b border-base-300 last:border-b-0 text-sm"
-                        >
-                          <span className="font-medium">{h.days}</span>
-                          <span className="text-base-content/70">{h.time}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-
-                  <Link to="/booking" className="btn btn-primary w-full mt-4">
-                    {c.contact.ctaButton}
-                  </Link>
-                </div>
-              </div>
-            </Reveal>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA FINAL */}
-      <section className="container mx-auto px-4 py-12 max-w-3xl text-center">
-        <Reveal>
-          <h2 className="text-3xl font-bold mb-3">{c.finalCta.title}</h2>
-          <p className="text-base-content/70 mb-6">{c.finalCta.subtitle}</p>
-          <Link to="/booking" className="btn btn-primary btn-lg">
-            {c.finalCta.button}
-          </Link>
-        </Reveal>
-      </section>
-
-      {/* FOOTER */}
-      <footer className="bg-neutral text-neutral-content">
-        <div className="container mx-auto px-4 py-8 max-w-5xl">
-          <div className="flex flex-col md:flex-row justify-between gap-4">
-            <div>
-              {logoUrl && (
-                <img
-                  src={logoUrl}
-                  alt={business?.name ?? "Logo"}
-                  className="h-10 max-w-[140px] object-contain mb-2"
-                />
-              )}
-              <h3 className="text-xl font-bold">{business?.name ?? "Kaiser"}</h3>
-              <p className="text-sm opacity-70">{business?.address ?? ""}</p>
-              <SocialLinks business={business} className="flex items-center gap-4 mt-3" />
-            </div>
-            <nav className="flex flex-wrap gap-4 text-sm">
-              <Link to="/booking" className="link link-hover">
-                Reservar
-              </Link>
-              <a href="#servicios" className="link link-hover">
-                Servicios
-              </a>
-              <a href="#contacto" className="link link-hover">
-                Contacto
-              </a>
-              <Link to="/login" className="link link-hover">
-                Acceso admin
-              </Link>
-            </nav>
-          </div>
-          <div className="text-xs opacity-60 mt-6 pt-4 border-t border-neutral-content/20">
-            © {new Date().getFullYear()} {business?.name ?? "Kaiser"}. Todos los
-            derechos reservados.
-          </div>
-        </div>
-      </footer>
+      <FinalCta c={c} />
+      <Footer
+        business={business}
+        servicesEnabled={isEnabled("services")}
+        contactEnabled={isEnabled("contact")}
+      />
+      <WhatsAppFloat c={c} business={business} />
     </div>
-  );
-}
-
-function Feature({
-  title,
-  desc,
-  icon,
-}: {
-  title: string;
-  desc: string;
-  icon: string;
-}) {
-  return (
-    <div className="card bg-base-100 border border-base-300/60 shadow h-full transition-all duration-300 ease-out hover:scale-[1.03] hover:shadow-2xl hover:border-primary/40 hover:z-10 lg:group-hover/grid:opacity-55 lg:hover:!opacity-100 group/card">
-      <div className="card-body items-start">
-        {icon ? (
-          <div className="text-3xl transition-transform duration-300 group-hover/card:scale-125 group-hover/card:-rotate-6">
-            {icon}
-          </div>
-        ) : null}
-        <h3 className="card-title text-lg">{title}</h3>
-        <p className="text-sm text-base-content/70">{desc}</p>
-      </div>
-    </div>
-  );
-}
-
-function ContactRow({
-  icon,
-  label,
-  value,
-  href,
-  external,
-}: {
-  icon: string;
-  label: string;
-  value: string;
-  href: string;
-  external?: boolean;
-}) {
-  return (
-    <a
-      href={href}
-      {...(external ? { target: "_blank", rel: "noreferrer" } : {})}
-      className="flex items-start gap-3 p-3 rounded-box hover:bg-base-200 transition"
-    >
-      <div className="text-2xl">{icon}</div>
-      <div>
-        <div className="text-xs uppercase tracking-wide text-base-content/60">
-          {label}
-        </div>
-        <div className="font-semibold">{value}</div>
-      </div>
-    </a>
   );
 }

@@ -1,10 +1,14 @@
 import { prisma } from "../lib/prisma.ts";
 import { EmployeeDeductionRepository } from "../repositories/employee-deduction.repository.ts";
 import { NotFoundException } from "../exceptions/HttpException.ts";
+import { computeServiceCommission, money } from "../lib/commission.ts";
+import { businessDayStart, businessDayEnd } from "../lib/business-time.ts";
 
+// Solo para scheduledAt (fake-UTC, hora de pared — ver business-hours.ts):
+// el corte `${ymd}Z` YA es el día Bogotá. Para createdAt (instantes reales)
+// usar businessDayStart/End, que corrigen las 5 horas de desfase.
 const startOfDay = (ymd: string) => new Date(`${ymd}T00:00:00.000Z`);
 const endOfDay = (ymd: string) => new Date(`${ymd}T23:59:59.999Z`);
-const money = (n: number) => Math.round(n * 100) / 100;
 
 /**
  * Cierre diario económico de un empleado: ingresos por servicios, comisiones,
@@ -49,10 +53,12 @@ export const DailyCloseService = {
         0,
       );
       const price = a.finalPrice != null ? Number(a.finalPrice) : basePrice;
-      const commission = svcs.reduce(
-        (sum, s) => sum + (Number(s.price) * (commissionMap.get(s.id) ?? 0)) / 100,
-        0,
-      );
+      // Snapshot congelado al finalizar; fallback (citas pre-snapshot) con la
+      // misma regla sobre lo cobrado y las tasas actuales.
+      const commission =
+        a.commissionAmount != null
+          ? Number(a.commissionAmount)
+          : computeServiceCommission(svcs, a.finalPrice, commissionMap);
       serviceRevenue += price;
       serviceCommission += commission;
       return {
@@ -65,8 +71,13 @@ export const DailyCloseService = {
       };
     });
 
+    // createdAt es un instante real: el día de negocio va de 00:00 a 23:59
+    // hora Colombia, no UTC.
     const sales = await prisma.sale.findMany({
-      where: { employeeId, createdAt: { gte: start, lte: end } },
+      where: {
+        employeeId,
+        createdAt: { gte: businessDayStart(date), lte: businessDayEnd(date) },
+      },
       include: { items: { include: { product: true } } },
     });
     const productSales = sales.reduce((sum, s) => sum + Number(s.total), 0);
@@ -77,8 +88,8 @@ export const DailyCloseService = {
 
     const deductions = await EmployeeDeductionRepository.sumInRange(
       employeeId,
-      start,
-      end,
+      businessDayStart(date),
+      businessDayEnd(date),
     );
 
     const netEarnings =

@@ -6,6 +6,7 @@ export interface SaleItemData {
   productId: string;
   quantity: number;
   unitPrice: string;
+  unitCost: string;
   commissionPct: string;
   lineTotal: string;
   commissionAmount: string;

@@ -263,6 +263,10 @@ model Appointment {
   // Precio real cobrado; se usa para servicios de precio variable. Cuando es
   // null, los reportes usan Service.price.
   finalPrice  Decimal?
+  // Comisión de servicios congelada al FINALIZAR la cita (snapshot sobre lo
+  // realmente cobrado). null = cita no finalizada o anterior al snapshot; los
+  // reportes recalculan con las tasas actuales como fallback.
+  commissionAmount Decimal?
   // Cita creada a partir de un combo/paquete (opcional).
   packageId   String?
   // Marca de recordatorio enviado, para no duplicar (cron de recordatorios).
@@ -318,7 +322,6 @@ model Product {
   name        String   @unique
   description String?
   price       Decimal
-  realCost    Decimal  @default(0)
   saleCost    Decimal  @default(0)
   stock       Int      @default(0)
   commission  Decimal  @default(0)
@@ -351,6 +354,9 @@ model SaleItem {
   productId        String
   quantity         Int
   unitPrice        Decimal
+  // Costo unitario (Product.saleCost) congelado al momento de la venta.
+  // null = venta anterior al snapshot (el backfill lo rellena).
+  unitCost         Decimal?
   commissionPct    Decimal @default(0)
   lineTotal        Decimal
   commissionAmount Decimal @default(0)

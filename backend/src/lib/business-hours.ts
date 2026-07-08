@@ -57,6 +57,37 @@ export const timeToMinutes = (hhmm: string): number => {
 };
 
 /**
+ * "YYYY-MM-DD a las HH:MM" a partir de una hora de pared de cita (fake-UTC,
+ * ver cabecera del archivo). Usado en recordatorios y confirmaciones por correo.
+ */
+export const formatWallClock = (d: Date): string =>
+  `${d.toISOString().slice(0, 10)} a las ${d.toISOString().slice(11, 16)}`;
+
+/**
+ * "Ahora" en la hora de pared del negocio, codificado en la convención
+ * fake-UTC del sistema (ver cabecera). Si en Bogotá son las 17:00, devuelve
+ * un Date cuyo getUTCHours() es 17, sin importar la zona horaria del
+ * servidor. Es el único reloj válido para comparar contra scheduledAt.
+ */
+export const wallClockNow = (timeZone: string): Date => {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date());
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value ?? "00";
+  return new Date(
+    `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}:${get("second")}.000Z`,
+  );
+};
+
+/**
  * Pick the open/close window that applies to the weekday of `dateYmd`
  * (a "YYYY-MM-DD" string interpreted in UTC).
  */

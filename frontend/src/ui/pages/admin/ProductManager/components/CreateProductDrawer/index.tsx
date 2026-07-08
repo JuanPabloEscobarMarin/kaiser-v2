@@ -22,7 +22,6 @@ export function CreateProductDrawer({
   const { setMessage, notify } = useNotify();
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
-  const [realCost, setRealCost] = useState("0");
   const [saleCost, setSaleCost] = useState("0");
   const [stock, setStock] = useState(0);
   const [commission, setCommission] = useState("0");
@@ -37,7 +36,6 @@ export function CreateProductDrawer({
     if (product) {
       setName(product.name);
       setPrice(product.price.toString());
-      setRealCost(product.realCost?.toString() ?? "0");
       setSaleCost(product.saleCost?.toString() ?? "0");
       setStock(product.stock);
       setCommission(product.commission?.toString() ?? "0");
@@ -47,7 +45,6 @@ export function CreateProductDrawer({
     } else {
       setName("");
       setPrice("");
-      setRealCost("0");
       setSaleCost("0");
       setStock(0);
       setCommission("0");
@@ -77,7 +74,6 @@ export function CreateProductDrawer({
       const payload: ProductInput = {
         name,
         price,
-        realCost,
         saleCost,
         stock,
         commission,
@@ -188,38 +184,21 @@ export function CreateProductDrawer({
                 </fieldset>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <fieldset>
-                  <legend className="font-semibold mb-1">Costo real</legend>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    className="input w-full input-bordered"
-                    value={realCost}
-                    onChange={(e) => setRealCost(e.target.value)}
-                    readOnly={readOnly}
-                  />
-                  <small className="text-xs opacity-60">
-                    Lo que te cuesta comprarlo.
-                  </small>
-                </fieldset>
-                <fieldset>
-                  <legend className="font-semibold mb-1">Costo de venta</legend>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    className="input w-full input-bordered"
-                    value={saleCost}
-                    onChange={(e) => setSaleCost(e.target.value)}
-                    readOnly={readOnly}
-                  />
-                  <small className="text-xs opacity-60">
-                    Compra + gastos asociados.
-                  </small>
-                </fieldset>
-              </div>
+              <fieldset>
+                <legend className="font-semibold mb-1">Costo de venta</legend>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="input w-full input-bordered"
+                  value={saleCost}
+                  onChange={(e) => setSaleCost(e.target.value)}
+                  readOnly={readOnly}
+                />
+                <small className="text-xs opacity-60">
+                  Compra + gastos asociados.
+                </small>
+              </fieldset>
 
               <div className="rounded-lg bg-base-200 p-3 text-sm flex items-center justify-between">
                 <span className="opacity-70">

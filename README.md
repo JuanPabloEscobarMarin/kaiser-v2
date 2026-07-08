@@ -2,22 +2,26 @@
 
 MVP completo de reservas de barbería: cliente reserva turnos, admin gestiona servicios, empleados y citas.
 
-## ⚠️ PENDIENTE en producción (activar correo y recordatorios)
+## ⚠️ PENDIENTE en producción (activar correo, WhatsApp y recordatorios)
 
-Las funciones de **campañas por correo** y **recordatorios de cita** ya están en el
-código pero quedan **inactivas (no-op)** hasta configurar credenciales. Para activarlas,
-agregar estas variables de entorno en Vercel → proyecto **`kaiser-backend`** → Settings →
-Environment Variables (Production) y **redeployar el backend** (`bash scripts/deploy-backend.sh`):
+Las funciones de **confirmación de cita**, **recordatorios** y **campañas** (por correo y
+WhatsApp) ya están en el código pero quedan **inactivas (no-op)** hasta configurar
+credenciales. Para activarlas, agregar estas variables de entorno en Vercel → proyecto
+**`kaiser-backend`** → Settings → Environment Variables (Production) y **redeployar el
+backend** (`bash scripts/deploy-backend.sh`):
 
 | Variable | Para qué | Notas |
 |----------|----------|-------|
-| `RESEND_API_KEY` | Enviar correos (campañas + recordatorios) | Crear cuenta en [resend.com](https://resend.com) y **verificar un dominio** de envío. |
+| `RESEND_API_KEY` | Enviar correos (confirmación + campañas + recordatorios) | Crear cuenta en [resend.com](https://resend.com) y **verificar un dominio** de envío. |
 | `RESEND_FROM` | Remitente de los correos | Ej: `Kaiser <hola@tudominio.com>`. Con dominio verificado. |
+| `TWILIO_ACCOUNT_SID` | Enviar WhatsApp (confirmación + campañas + recordatorios) | Crear cuenta en [twilio.com](https://www.twilio.com), Console → Account SID. |
+| `TWILIO_AUTH_TOKEN` | Autenticar con Twilio | Console → Auth Token (junto al Account SID). |
+| `TWILIO_WHATSAPP_FROM` | Remitente de WhatsApp | Con el Sandbox de Twilio: `whatsapp:+14155238886`. Con un número propio aprobado: `whatsapp:+<tu número>`. |
 | `CRON_SECRET` | Proteger el cron de recordatorios | Cualquier string secreto. **Obligatorio**: sin él, `/api/cron/reminders` responde 403. Vercel lo envía solo como `Authorization: Bearer`. |
 
 - Sin estas variables, el resto de la app funciona igual; solo el envío de correo/WhatsApp queda en no-op.
-- **WhatsApp proactivo** (recordatorios/promos fuera de la ventana de 24 h) además requiere
-  **plantillas aprobadas en Meta** — hoy usa `sendText` como best-effort.
+- **Twilio Sandbox** (gratis, para pruebas) solo entrega a números que primero le mandan el código "join" al número sandbox — para enviar a cualquier cliente sin ese paso hace falta un **WhatsApp Sender propio** aprobado en Twilio (proceso guiado desde su consola).
+- El envío de WhatsApp es solo mensajes de texto (sin botones interactivos ni webhook entrante).
 - El cron de recordatorios está en `backend/vercel.json` como **diario** (`0 13 * * *` ≈ 8am COT)
   porque la cuenta Vercel es **Hobby** (no permite crons horarios). Con plan Pro se puede subir la frecuencia.
 

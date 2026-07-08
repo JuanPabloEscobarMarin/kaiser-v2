@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { reportsApi } from "@/core/api";
 import type { DailyClose } from "@/core/api/reports.api";
 import { DailyCloseView } from "@/ui/components/DailyCloseView";
+import { businessTodayYmd } from "@/lib/business-time";
 
-const today = () => new Date().toISOString().slice(0, 10);
+// Hoy en hora del negocio: toISOString() daría mañana después de las 7pm.
+const today = () => businessTodayYmd();
 
 export function EmployeeDailyClose({ employeeId }: { employeeId: string }) {
   const [date, setDate] = useState(today());

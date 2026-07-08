@@ -5,6 +5,8 @@ export interface SaleItem {
   productId: string;
   quantity: number;
   unitPrice: string;
+  // Costo unitario congelado al vender (null = venta pre-snapshot).
+  unitCost?: string | null;
   commissionPct: string;
   lineTotal: string;
   commissionAmount: string;

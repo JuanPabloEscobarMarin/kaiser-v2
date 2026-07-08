@@ -1,5 +1,5 @@
 import type { HomeContent } from "@/core/branding/home-content";
-export type { HomeContent } from "@/core/branding/home-content";
+export type { HomeContent, SectionId } from "@/core/branding/home-content";
 
 export type Role = "ADMIN" | "CLIENT" | "EMPLOYEE";
 export type AppointmentState = "SCHEDULED" | "CANCELLED" | "FINISHED";
@@ -85,7 +85,8 @@ export interface Service {
 export interface EmployeeService {
   id: string;
   name: string;
-  commission: string;
+  /** Solo presente para admins; la proyección pública la omite. */
+  commission?: string;
 }
 
 export interface ServicePackageItem {
@@ -143,6 +144,9 @@ export interface Appointment {
   endsAt: string;
   state: AppointmentState;
   finalPrice?: string | null;
+  // Comisión de servicios congelada al finalizar (null = pre-snapshot;
+  // los reportes recalculan con las tasas actuales como fallback).
+  commissionAmount?: string | null;
   packageId?: string | null;
   notes?: string | null;
   createdAt: string;
@@ -150,7 +154,13 @@ export interface Appointment {
   employee?: Employee;
   services?: {
     serviceId: string;
-    service?: { id: string; name: string; price: string; duration: number };
+    service?: {
+      id: string;
+      name: string;
+      price: string;
+      duration: number;
+      discount?: string;
+    };
   }[];
   package?: { id: string; name: string; price: string } | null;
   booking?: Booking | null;
