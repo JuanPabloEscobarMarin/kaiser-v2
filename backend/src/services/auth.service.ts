@@ -27,6 +27,11 @@ const publicUser = (u: {
 
 export const AuthService = {
   async login(data: LoginInput) {
+
+    if (!data.username?.trim() || !data.password) {
+      throw new HttpException("El usuario y la contraseña son requeridos", 400);
+    }
+
     const user = await UserRepository.byUsername(data.username);
     if (!user) throw new HttpException("Credenciales inválidas", 401);
 
@@ -36,6 +41,10 @@ export const AuthService = {
     const payload: JwtPayload = { userId: user.id, role: user.role };
     if (user.role === "EMPLOYEE") {
       const emp = await prisma.employee.findFirst({ where: { userId: user.id } });
+      
+      if (!emp || !emp.state) {
+        throw new HttpException("El perfil de empleado no está disponible o está inactivo", 403);
+      }
       if (emp) payload.employeeId = emp.id;
     }
 
@@ -50,6 +59,15 @@ export const AuthService = {
   },
 
   async updateProfile(userId: string, data: UpdateProfileInput) {
+
+    if (data.username === undefined && data.avatarSlug === undefined) {
+      throw new HttpException("Debes enviar al menos un campo para actualizar", 400);
+    }
+
+    if (data.username !== undefined && data.username.trim().length === 0) {
+      throw new HttpException("El nombre de usuario no puede estar vacío", 400);
+    }
+
     const current = await UserRepository.byId(userId);
     if (!current) throw new NotFoundException("Usuario no encontrado");
 
@@ -69,6 +87,13 @@ export const AuthService = {
   },
 
   async changePassword(userId: string, data: ChangePasswordInput) {
+    if (!data.newPassword || data.newPassword.trim().length < 6) {
+      throw new HttpException("La nueva contraseña debe tener al menos 6 caracteres", 400);
+    }
+
+    if (data.currentPassword === data.newPassword) {
+      throw new HttpException("La nueva contraseña no puede ser idéntica a la actual", 400);
+    }
     const user = await UserRepository.byIdWithPassword(userId);
     if (!user) throw new NotFoundException("Usuario no encontrado");
 

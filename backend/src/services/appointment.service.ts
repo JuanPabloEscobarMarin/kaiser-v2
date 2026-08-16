@@ -258,6 +258,17 @@ export const AppointmentService = {
     data: BookAppointmentInput,
     options: { adminOverride: boolean },
   ) {
+
+    // Validacion: Asegurar que el customer tenga al menos un nombre o dato de contacto basico
+    if (!data.customer.fullName || data.customer.fullName.trim().length === 0) {
+      throw new BadRequestException("El nombre del cliente es obligatorio");
+    }
+
+    // Validacion: Verificar que la fecha de programacion sea una fecha valida
+    if (isNaN(new Date(data.scheduledAt).getTime())) {
+      throw new BadRequestException("La fecha de la cita no es válida");
+    }
+
     const employee = await EmployeeService.getById(data.employeeId);
     if (!employee.state) {
       throw new BadRequestException("El empleado no está activo");
@@ -474,6 +485,19 @@ export const AppointmentService = {
     let serviceId = current.serviceId;
     let employeeId = current.employeeId;
 
+    // Validacion: Impedir modificar citas que ya fueron canceladas
+    if (current.state === "CANCELLED" && data.state !== "FINISHED") {
+      throw new BadRequestException("No puedes modificar una cita que ya está cancelada");
+    }
+
+    // Validacion: Impedir mover citas a fechas pasadas
+    if (data.scheduledAt) {
+      const newDate = new Date(data.scheduledAt);
+      if (newDate.getTime() < wallClockNow(env.BUSINESS_TIMEZONE).getTime()) {
+        throw new BadRequestException("No puedes reprogramar una cita para el pasado");
+      }
+    }
+
     if (data.serviceId) {
       const service = await ServiceService.getById(data.serviceId);
       serviceId = data.serviceId;
@@ -545,7 +569,13 @@ export const AppointmentService = {
   },
 
   async cancel(id: string) {
-    await this.getById(id);
+    const appointment = await this.getById(id);
+
+    // Validacion: Evitar re-cancelar citas
+    if (appointment.state === "CANCELLED") {
+      throw new BadRequestException("Esta cita ya se encuentra cancelada");
+    }
+    
     return AppointmentRepository.update(id, {
       state: "CANCELLED",
       commissionAmount: null,
