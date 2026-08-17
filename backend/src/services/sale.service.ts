@@ -21,6 +21,10 @@ export const SaleService = {
     SaleRepository.byEmployee(employeeId, filters),
 
   async getById(id: string) {
+    // Validación: Verificar que el ID de la venta no sea nulo, vacío ni contenga solo espacios.
+    if (!id || id.trim().length === 0) {
+      throw new BadRequestException("El ID de la venta es obligatorio");
+    }
     const sale = await SaleRepository.byId(id);
     if (!sale) throw new NotFoundException("Venta no encontrada");
     return sale;
@@ -33,8 +37,33 @@ export const SaleService = {
    *   `input.employeeId` is used (null = sale without commission to anyone).
    */
   async create(input: CreateSaleInput, opts: { sellerEmployeeId?: string } = {}) {
-    const effectiveEmployeeId =
-      opts.sellerEmployeeId ?? input.employeeId ?? null;
+    // Validación: La venta debe contener al menos un producto en el listado de items.
+    if (!input.items || !Array.isArray(input.items) || input.items.length === 0) {
+      throw new BadRequestException("La venta debe incluir al menos un producto");
+    }
+    // Validación: Verificar que cada item tenga un ID válido y una cantidad entera estrictamente positiva (> 0).
+    for (const item of input.items) {
+      if (!item.productId || item.productId.trim().length === 0) {
+        throw new BadRequestException("Cada item debe incluir un ID de producto válido");
+      }
+      if (
+        typeof item.quantity !== "number" ||
+        !Number.isInteger(item.quantity) ||
+        item.quantity <= 0
+      ) {
+        throw new BadRequestException("La cantidad de cada producto debe ser un número entero mayor a 0");
+      }
+    }
+
+    // Validación: Prevenir items duplicados con el mismo productId en la misma petición para no falsear el control de stock.
+    const productIds = input.items.map((i) => i.productId.trim());
+    const uniqueIds = new Set(productIds);
+    if (uniqueIds.size !== productIds.length) {
+      throw new BadRequestException("No se permiten productos duplicados en la misma venta; consolida las cantidades en una sola línea");
+    }
+
+    const rawEmployeeId = opts.sellerEmployeeId ?? input.employeeId ?? null;
+    const effectiveEmployeeId = rawEmployeeId ? rawEmployeeId.trim() : null;
 
     if (effectiveEmployeeId) {
       // Ensures the seller exists (throws NotFound otherwise).
@@ -56,8 +85,22 @@ export const SaleService = {
           `Stock insuficiente para "${product.name}" (disponible: ${product.stock})`,
         );
       }
+      // Validación: Verificar si el producto se encuentra activo para la venta.
+      if ("state" in product && !product.state) {
+        throw new BadRequestException(`El producto "${product.name}" no está activo para la venta`);
+      }
+
+      if (product.stock < it.quantity) {
+        throw new BadRequestException(
+          `Stock insuficiente para "${product.name}" (disponible: ${product.stock})`,
+        );
+      }
 
       const unitPrice = Number(product.price);
+      // Validación: El precio unitario del producto en catálogo debe ser mayor o igual a 0.
+      if (isNaN(unitPrice) || unitPrice < 0) {
+        throw new BadRequestException(`El precio configurado para "${product.name}" no es válido`);
+      }
       const commissionPct = effectiveEmployeeId ? Number(product.commission) : 0;
       const lineTotal = money(unitPrice * it.quantity);
       const commissionAmount = money((lineTotal * commissionPct) / 100);
@@ -94,8 +137,20 @@ export const SaleService = {
   },
 
   async void(id: string) {
+    // Validación: Verificar que el ID de la venta a anular sea válido.
+    if (!id || id.trim().length === 0) {
+      throw new BadRequestException("El ID de la venta es obligatorio");
+    }
     const sale = await SaleRepository.void(id);
     if (!sale) throw new NotFoundException("Venta no encontrada");
-    return sale;
+
+    // Validación: Evitar anular una venta que ya se encuentra en estado anulado.
+    if ("state" in sale && (sale as { state?: string }).state === "VOIDED") {
+      throw new BadRequestException("Esta venta ya ha sido anulada previamente");
+    }
+    const voided = await SaleRepository.void(id.trim());
+    if (!voided) throw new NotFoundException("Venta no encontrada");
+
+    return voided;
   },
 };

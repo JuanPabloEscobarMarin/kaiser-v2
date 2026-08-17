@@ -1,6 +1,6 @@
 import { prisma } from "../lib/prisma.ts";
 import { EmployeeDeductionRepository } from "../repositories/employee-deduction.repository.ts";
-import { NotFoundException } from "../exceptions/HttpException.ts";
+import { BadRequestException, NotFoundException } from "../exceptions/HttpException.ts";
 import { computeServiceCommission, money } from "../lib/commission.ts";
 import { businessDayStart, businessDayEnd } from "../lib/business-time.ts";
 
@@ -16,8 +16,28 @@ const endOfDay = (ymd: string) => new Date(`${ymd}T23:59:59.999Z`);
  */
 export const DailyCloseService = {
   async compute(employeeId: string, date: string) {
+    // Validación: Verificar que el identificador del empleado no sea nulo, vacío ni contenga solo espacios.
+    if (!employeeId || employeeId.trim().length === 0) {
+      throw new BadRequestException("El ID del empleado es obligatorio");
+    }
+
+    // Validación: Verificar que el parámetro de fecha esté presente y cumpla con el formato YYYY-MM-DD.
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date.trim())) {
+      throw new BadRequestException("La fecha es obligatoria y debe tener el formato YYYY-MM-DD");
+    }
+
+    const cleanDate = date.trim();
+
+    // Validación: Verificar que sea una fecha real en el calendario (evitando casos como 2026-02-30 o meses inexistentes).
+    const parsedDate = new Date(`${cleanDate}T00:00:00.000Z`);
+    if (
+      isNaN(parsedDate.getTime()) ||
+      parsedDate.toISOString().slice(0, 10) !== cleanDate
+    ) {
+      throw new BadRequestException("La fecha proporcionada no corresponde a una fecha válida del calendario");
+    }
     const employee = await prisma.employee.findUnique({
-      where: { id: employeeId },
+      where: { id: employeeId.trim() },
       include: { services: true },
     });
     if (!employee) throw new NotFoundException("Empleado no encontrado");

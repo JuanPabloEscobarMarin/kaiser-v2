@@ -88,6 +88,13 @@ const s3Driver: StorageDriver = {
     const response = await s3Client.send(
       new GetObjectCommand({ Bucket: BUCKET, Key: `images/${path.basename(slug)}` }),
     );
+
+    // Validación: Verificar que el objeto devuelto por S3 contenga un stream legible.
+    // Error lanzado: NotFoundException (404)
+    if (!response.Body) {
+        throw new NotFoundException("Imagen no encontrada en el almacenamiento");
+    }
+
     return {
       stream: response.Body as Readable,
       contentType: response.ContentType ?? "application/octet-stream",

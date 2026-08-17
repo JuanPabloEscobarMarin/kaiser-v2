@@ -2,6 +2,10 @@ import { prisma } from "../lib/prisma.ts";
 import { EmailService } from "./email.service.ts";
 import { WhatsAppService } from "./whatsapp.service.ts";
 import type { CreateCampaignInput } from "../validators/campaign.validators.ts";
+import {
+  BadRequestException,
+  NotFoundException,
+} from "../exceptions/HttpException.ts";
 
 type Segment = CreateCampaignInput["segment"];
 
@@ -35,16 +39,20 @@ async function resolveAudience(
   if (segment === "INACTIVE") {
     const days = Number(segmentParam) || INACTIVE_DEFAULT_DAYS;
     const cutoff = new Date(Date.now() - days * 86_400_000);
-    const all = await prisma.customer.findMany({
-      include: { bookings: { include: { appointment: true } } },
+
+    return prisma.customer.findMany({
+      where: {
+        bookings: {
+          none: {
+            appointment: {
+              scheduledAt: {
+                gte: cutoff,
+              },
+            },
+          },
+        },
+      },
     });
-    return all
-      .filter((c) => {
-        const times = c.bookings.map((b) => b.appointment.scheduledAt.getTime());
-        if (times.length === 0) return true; // nunca ha vuelto
-        return Math.max(...times) < cutoff.getTime();
-      })
-      .map(({ bookings: _b, ...c }) => c);
   }
 
   if (segment === "BY_SERVICE") {
@@ -64,7 +72,20 @@ export const CampaignService = {
   list: () => prisma.campaign.findMany({ orderBy: { createdAt: "desc" } }),
 
   async audiencePreview(segment: Segment, segmentParam: string | null) {
+
+    if (segment === "BY_SERVICE" && (!segmentParam || segmentParam.trim().length === 0)) {
+      throw new BadRequestException("Debes especificar el ID del servicio para este segmento");
+    }
+
+    if (segment === "INACTIVE" && segmentParam !== null) {
+      const days = Number(segmentParam);
+      if (isNaN(days) || days <= 0 || !Number.isInteger(days)) {
+        throw new BadRequestException("Los días de inactividad deben ser un número entero positivo");
+      }
+    }
+
     const audience = await resolveAudience(segment, segmentParam);
+
     return {
       total: audience.length,
       withEmail: audience.filter((c) => c.email).length,
@@ -73,8 +94,54 @@ export const CampaignService = {
   },
 
   async createAndSend(input: CreateCampaignInput) {
+    // Validación: El título y el cuerpo del mensaje no pueden estar vacíos ni formados únicamente por espacios.
+    // Error lanzado: BadRequestException (400)
+    if (!input.title || input.title.trim().length === 0) {
+      throw new BadRequestException("El título de la campaña es obligatorio");
+    }
+    if (!input.body || input.body.trim().length === 0) {
+      throw new BadRequestException("El mensaje de la campaña es obligatorio");
+    }
+
+    // Validación: Si el canal exige WhatsApp o Email, verificar que el proveedor correspondiente esté configurado en el sistema.
+    // Error lanzado: BadRequestException (400)
+    if ((input.channel === "EMAIL" || input.channel === "BOTH") && !EmailService.isConfigured()) {
+      throw new BadRequestException("El servicio de correo electrónico no está configurado");
+    }
+    if (input.channel === "WHATSAPP" && !WhatsAppService.isConfigured()) {
+      throw new BadRequestException("El servicio de WhatsApp no está configurado");
+    }
+
+    // Validación: Verificar que el servicio exista en base de datos si el segmento es BY_SERVICE.
+    // Error lanzado: NotFoundException (404) o BadRequestException (400)
+    if (input.segment === "BY_SERVICE") {
+      if (!input.segmentParam || input.segmentParam.trim().length === 0) {
+        throw new BadRequestException("Debes especificar el ID del servicio para este segmento");
+      }
+      const serviceExists = await prisma.service.findUnique({
+        where: { id: input.segmentParam },
+      });
+      if (!serviceExists) {
+        throw new NotFoundException("El servicio seleccionado para el segmento no existe");
+      }
+    }
+
+    // Validación: Días de inactividad válidos si el segmento es INACTIVE.
+    // Error lanzado: BadRequestException (400)
+    if (input.segment === "INACTIVE" && input.segmentParam) {
+      const days = Number(input.segmentParam);
+      if (isNaN(days) || days <= 0 || !Number.isInteger(days)) {
+        throw new BadRequestException("Los días de inactividad deben ser un número entero positivo");
+      }
+    }
     const segmentParam = input.segmentParam ?? null;
     const audience = await resolveAudience(input.segment, segmentParam);
+
+    // Validación: Evitar registrar y procesar campañas cuya audiencia resultante sea 0 destinatarios.
+    // Error lanzado: BadRequestException (400)
+    if (audience.length === 0) {
+      throw new BadRequestException("No se encontraron clientes para el segmento y filtros seleccionados");
+    }
 
     let emailsSent = 0;
     let whatsappSent = 0;

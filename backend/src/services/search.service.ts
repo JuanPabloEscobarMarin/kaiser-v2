@@ -1,7 +1,9 @@
+import { BadRequestException } from "../exceptions/HttpException.ts";
 import { ServiceRepository } from "../repositories/service.repository.ts";
 
 const SCORE_THRESHOLD = 0.25;
 const STOPWORDS = new Set(["de", "la", "el", "en", "y", "a", "del"]);
+const MAX_QUERY_LENGTH = 100;
 
 const bigrams = (str: string) => {
   const s = str.toLowerCase().replace(/\s+/g, " ").trim();
@@ -51,6 +53,21 @@ const tokenize = (q: string) =>
 
 export const SearchService = {
   async search(query: string) {
+    // Validación: Verificar que el término de búsqueda no sea nulo, indefinido ni esté compuesto solo de espacios.
+    if (!query || query.trim().length === 0) {
+      throw new BadRequestException("El término de búsqueda es obligatorio");
+    }
+
+    // Validación: Longitud mínima de búsqueda para evitar procesamiento innecesario y coincidencias genéricas.
+    const cleanQuery = query.trim();
+    if (cleanQuery.length < 2) {
+      throw new BadRequestException("El término de búsqueda debe tener al menos 2 caracteres");
+    }
+
+    // Validación: Límite máximo de caracteres para mitigar ataques de denegación de servicio (ReDoS / CPU blocking en cálculo de n-gramas).
+    if (cleanQuery.length > MAX_QUERY_LENGTH) {
+      throw new BadRequestException(`El término de búsqueda no puede exceder los ${MAX_QUERY_LENGTH} caracteres`);
+    }
     const tokens = tokenize(query);
     const searchTokens = tokens.length > 0 ? tokens : [query.trim()];
     const services = await ServiceRepository.searchByTokens(searchTokens);

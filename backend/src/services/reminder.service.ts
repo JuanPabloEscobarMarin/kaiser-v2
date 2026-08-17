@@ -3,15 +3,22 @@ import { EmailService } from "./email.service.ts";
 import { WhatsAppService } from "./whatsapp.service.ts";
 import { formatWallClock, wallClockNow } from "../lib/business-hours.ts";
 import { env } from "../config/env.ts";
+import { BadRequestException } from "../exceptions/HttpException.ts";
 
 /** Ventana de anticipación del recordatorio (horas antes de la cita). */
 const LOOKAHEAD_HOURS = 24;
 
-const markSent = (id: string) =>
-  prisma.appointment.update({
-    where: { id },
+const markSent = async (id: string) => {
+  // Validación: Verificar que el ID de la cita no esté vacío antes de actualizar el registro.
+  if (!id || id.trim().length === 0) {
+    throw new BadRequestException("El ID de la cita es obligatorio para marcar el recordatorio");
+  }
+
+  return prisma.appointment.update({
+    where: { id: id.trim() },
     data: { reminderSentAt: new Date() },
   });
+};
 
 export const ReminderService = {
   /**
@@ -20,6 +27,11 @@ export const ReminderService = {
    * marca `reminderSentAt` para no reenviar.
    */
   async runDueReminders() {
+    // Validación: Verificar que la zona horaria del negocio esté debidamente configurada.
+    if (!env.BUSINESS_TIMEZONE || env.BUSINESS_TIMEZONE.trim().length === 0) {
+      throw new Error("BUSINESS_TIMEZONE no está configurado en las variables de entorno");
+    }
+
     // Reloj de pared del negocio, no new Date(): scheduledAt está en la
     // convención fake-UTC (ver lib/business-hours.ts).
     const now = wallClockNow(env.BUSINESS_TIMEZONE);
